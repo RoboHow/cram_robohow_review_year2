@@ -127,7 +127,6 @@
                         ((put-down-loc (location
                                         `((desig-props:on Cupboard)
                                           (desig-props:name ,object-destination)))))
-                      ;;(desig-props:obstacle desig-props:aware)))))
                       (cpl:with-failure-handling
                           ((cram-plan-failures:manipulation-pose-unreachable (f)
                              (declare (ignore f))
@@ -138,7 +137,6 @@
                              (ros-warn (pick it up)
                                        "Cannot reach location. Retrying.")
                              (retry)))
-                        ;;(update-tabletop-scene object-destination)
                         (achieve `(cram-plan-library:object-placed-at
                                    ,object ,put-down-loc))
                         (move-arms-up))))
@@ -149,13 +147,3 @@
                   "/map" (roslisp:ros-time)
                   (tf:make-3d-vector -0.2352 0.0133 -0.003)
                   (tf:make-quaternion 0.00357 0 -0.9996 0.02914))))
-
-(defun drive-to-pose (pose-stamped)
-  (block nav
-    (with-designators ((loc (location `((desig-props:pose ,pose-stamped))))
-                       (act (action `((desig-props:type desig-props:navigation)
-                                      (desig-props:goal ,loc)))))
-      (cpl:with-failure-handling ((cram-plan-failures:location-not-reached-failure (f)
-                                (declare (ignore f))
-                                (return-from nav)))
-        (perform act)))))

@@ -76,3 +76,107 @@
                              (when grasp-type
                                `((desig-props:grasp-type ,grasp-type)))))
         collect handle-object))
+
+(defgeneric init-ms-belief-state (&key debug-window objects))
+
+(defmethod init-ms-belief-state (&key debug-window objects)
+  (crs:prolog `(btr:clear-bullet-world))
+  (let* ((robot-pose (get-robot-pose))
+         (urdf-robot
+           (cl-urdf:parse-urdf
+            (roslisp:get-param "robot_description_lowres")))
+         (urdf-kitchen
+           (cl-urdf:parse-urdf
+            (roslisp:get-param "kitchen_description")))
+         (scene-rot-quaternion (tf:euler->quaternion :az pi))
+         (scene-rot `(,(tf:x scene-rot-quaternion)
+                      ,(tf:y scene-rot-quaternion)
+                      ,(tf:z scene-rot-quaternion)
+                      ,(tf:w scene-rot-quaternion)))
+         (scene-trans `(-3.45 -4.35 0))
+         (robot-pose robot-pose)
+         (robot-rot `(,(tf:x (tf:orientation robot-pose))
+                      ,(tf:y (tf:orientation robot-pose))
+                      ,(tf:z (tf:orientation robot-pose))
+                      ,(tf:w (tf:orientation robot-pose))))
+         (robot-trans `(,(tf:x (tf:origin robot-pose))
+                        ,(tf:y (tf:origin robot-pose))
+                        ,(tf:z (tf:origin robot-pose))))
+         (bdgs
+           (car
+            (force-ll
+             (crs:prolog
+              `(and (btr:clear-bullet-world)
+                    (btr:bullet-world ?w)
+                    (btr:assert (btr:object
+                                 ?w btr:static-plane floor
+                                 ((0 0 0) (0 0 0 1))
+                                 :normal (0 0 1) :constant 0))
+                    ,@(when debug-window
+                       `((btr:debug-window ?w)))
+                    (btr:robot ?robot)
+                    ,@(loop for object in objects
+                            for obj-name = (car object)
+                            for obj-pose = (cdr object)
+                            collect `(btr:assert
+                                      (btr:object
+                                       ?w btr:box ,obj-name
+                                       ((,(tf:x (tf:origin obj-pose))
+                                         ,(tf:y (tf:origin obj-pose))
+                                         ,(tf:z (tf:origin obj-pose)))
+                                        (,(tf:x (tf:orientation obj-pose))
+                                         ,(tf:y (tf:orientation obj-pose))
+                                         ,(tf:z (tf:orientation obj-pose))
+                                         ,(tf:w (tf:orientation obj-pose))))
+                                       :mass 0.0 :size (0.1 0.1 0.1))))
+                    (assert (btr:object
+                             ?w btr:urdf ?robot
+                             (,robot-trans ,robot-rot)
+                             :urdf ,urdf-robot))
+                    (assert (btr:object
+                             ?w btr:semantic-map sem-map-kitchen
+                             (,scene-trans ,scene-rot)
+                             :urdf ,urdf-kitchen))))))))
+    (var-value
+     '?pr2
+     (lazy-car
+      (crs:prolog
+       `(and (btr:robot ?robot)
+             (btr:%object ?w ?robot ?pr2)) bdgs)))
+    (var-value
+     '?sem-map
+     (lazy-car
+      (crs:prolog
+       `(btr:%object ?w sem-map-kitchen ?sem-map) bdgs)))))
+
+(defmacro with-process-modules (&body body)
+  `(cpm:with-process-modules-running
+       (pr2-manipulation-process-module:pr2-manipulation-process-module
+        pr2-navigation-process-module:pr2-navigation-process-module
+        point-head-process-module:point-head-process-module
+        robosherlock-process-module:robosherlock-process-module)
+     ,@body))
+
+(defun get-robot-pose ()
+  (let ((time (roslisp:ros-time)))
+    (tf:wait-for-transform
+     *tf* :time time
+          :source-frame "/map"
+          :target-frame "/base_link")
+    (tf:transform-pose
+     *tf* :pose (tf:make-pose-stamped
+                 "/base_link"
+                 time
+                 (tf:make-identity-vector)
+                 (tf:make-identity-rotation))
+     :target-frame "/map")))
+
+(defun drive-to-pose (pose-stamped)
+  (block nav
+    (with-designators ((loc (location `((desig-props:pose ,pose-stamped))))
+                       (act (action `((desig-props:type desig-props:navigation)
+                                      (desig-props:goal ,loc)))))
+      (cpl:with-failure-handling ((cram-plan-failures:location-not-reached-failure (f)
+                                (declare (ignore f))
+                                (return-from nav)))
+        (perform act)))))

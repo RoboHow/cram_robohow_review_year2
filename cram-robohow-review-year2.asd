@@ -69,5 +69,10 @@
   ((:module "src"
             :components
             ((:file "package")
-             (:file "utils" :depends-on ("package"))
-             (:file "demo-plans" :depends-on ("package" "utils"))))))
+             (:file "sem-map-config" :depends-on ("package"))
+             (:file "costmap-metadata" :depends-on ("package"))
+             (:file "utils" :depends-on ("package" "sem-map-config" "costmap-metadata"))
+             (:file "demo-plans" :depends-on ("package"
+                                              "utils"
+                                              "sem-map-config"
+                                              "costmap-metadata"))))))
