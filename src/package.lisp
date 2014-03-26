@@ -29,8 +29,9 @@
 (in-package :cl-user)
 
 (desig-props:def-desig-package cram-robohow-review-year2
-  (:use #:common-lisp
-        #:roslisp)
+  (:use #:common-lisp #:roslisp #:cram-utilities #:designators-ros
+        #:cram-roslisp-common #:cram-designators #:location-costmap
+        #:cram-plan-knowledge #:cram-plan-library)
   (:import-from :cram-language 
                 top-level fl-funcall with-tags pursue tag retry-after-suspension
                 whenever pulsed value with-task-suspended seq)
@@ -41,5 +42,11 @@
                 desig-prop
                 action-desig)
   (:import-from :cram-language-designator-support with-designators)
+  (:import-from :cram-language def-cram-function def-top-level-cram-function)
   (:import-from :cram-reasoning def-fact-group <- not)
-  (:desig-properties))
+  (:desig-properties #:distance #:around #:robot #:at #:goal
+                     #:type #:on #:name #:to #:grasp #:obj
+                     #:trajectory #:handle #:joint #:joint-axis
+                     #:lower-bound #:upper-bound #:box #:name #:at
+                     #:color #:size #:shape #:2d-range #:spatula
+                     #:obstacle #:aware))
