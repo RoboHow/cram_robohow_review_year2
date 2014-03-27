@@ -1,0 +1,105 @@
+First Part -- Pick and Place
+============================
+
+ A number of objects (one of type pancakemix, two of type spatula)
+ are to be transported from counter "kitchen_sink_block" to the
+ table "pancake_table". An object of type pancakemaker resides on
+ the latter, acting as collision object. This needs to be perceived
+ before performing manipulation actions on this table. Picking up
+ the required objects only requires knowledge about there vague
+ whereabouts:
+ 
+ (a location `((desig-props:on Cupboard)
+               (desig-props:name "kitchen_sink_block")))
+ 
+ (a location `((desig-props:on Cupboard)
+               (desig-props:name "kitchen_island")))
+ 
+ 
+ The script is then as follows:
+ 
+  - Go to kitchen sink block, look at counter, query perception for objects of type 'spatula'.
+  - Take spatula from counter, and query perception for objects of type 'pancakemix'.
+  - Take pancake mix from counter and reposition robot in front of pancake table to detect the pancake maker.
+  - Place the spatula on the pancake table with these constraints:
+    
+    (a location `((desig-props:on Cupboard)
+                  (desig-props:name "pancake_table"))
+                  (desig-props:rightof ,pancake-maker)))
+    
+  - Place the pancake mix on the kitchen island with these constrains:
+    
+    (a location `((desig-props:on Cupboard)
+                  (desig-props:name "kitchen_island")))
+  
+  - Go to kitchen island, look at counter, query perception for objects of type 'spatula'.
+  - Take second spatula and reposition robot in front of pancake table.
+  - Place the spatula on the pancake table with these constraints:
+    
+    (a location `((desig-props:on Cupboard)
+                  (desig-props:name "pancake_table"))
+                  (desig-props:leftof ,pancake-maker)))
+
+  - Go into a well-defined robot home-pose.
+
+  - The final object placement and scenery looks like this:
+    
+                     pancake_table                    kitchen_island
+    +----------------------------------------------+  +-------------+
+    |              |               |               |  |             |
+    | spatula-left | pancake-maker | spatula-right |  | pancake-mix |
+    |              |               |               |  |             |
+    +----------------------------------------------+  +-------------+
+
+               +-----------------------+
+               |                       |
+               |                       |
+               |         Robot         |
+               |                       |
+               |                       |
+               +-----------------------+
+
+
+
+Second Part -- Pancake Manipulation
+===================================
+
+ In a well-defined placement of objects, a set of manipulation
+ activities has to be performed. Four objects are present on the
+ pancake table:
+ 
+  - One central object of type 'pancakemaker'
+  - Two objects of type 'spatula', one to the left and one to the right of the pancake maker
+  - One object of type 'pancakemix', to the right of both spatulas
+ 
+ The robot is in a well-defines pose and position in front of the
+ pancake table.
+ 
+ The script is then as follows:
+ 
+  - Look at the table and find the pancake maker:
+ 
+    (an object `((desig-props:at ,(a location `((desig-props:on Cupboard)
+                                                (desig-props:name "pancake_table"))))
+                 (desig-props:type pancakemaker)))
+    
+  - Find the pancake mix to the right of the pancake maker:
+    
+    (an object `((desig-props:at ,(a location `((desig-props:on Cupboard)
+                                                (desig-props:name "pancake_table"))
+                                                (desig-props:rightof ,pancakemaker))))
+                 (desig-props:type pancakemix)))
+    
+  - Grasp the pancake mix with the right arm
+  - [Placeholder for pouring demo part: Pouring from the pancake mix]
+  - Place the pancake mix back to the right of both spatulas
+  
+  - Grasp the spatula to the right of the pancake maker with the right arm
+  - Grasp the spatula to the left of the pancake maker with the left arm
+  
+  - Query perception for objects of type 'pancake' on the pancake table, on the pancake maker.
+  - [Placeholder for the flipping demo part: Flipping the pancake]
+  - Place the spatula in the left hand onto its initial position left of the pancake maker.
+  - Place the spatula in the right hand onto its initial position right of the pancake maker.
+  
+  - Done.
