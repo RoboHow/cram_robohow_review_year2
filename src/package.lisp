@@ -49,4 +49,6 @@
                      #:trajectory #:handle #:joint #:joint-axis
                      #:lower-bound #:upper-bound #:box #:name #:at
                      #:color #:size #:shape #:2d-range #:spatula
-                     #:obstacle #:aware))
+                     #:obstacle #:aware #:pancakemaker #:pancakemix
+                     #:pancake #:side #:rightof #:leftof #:handle
+                     #:max-handles #:top-slide-down))

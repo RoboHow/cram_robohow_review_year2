@@ -28,21 +28,208 @@
 
 (in-package :cram-robohow-review-year2)
 
-(defun move-arms-up (&key allowed-collision-objects)
-  (pr2-manip-pm::execute-move-arm-pose
-   :left
-   (tf:make-pose-stamped
-    "base_link" (roslisp:ros-time)
-    (tf:make-3d-vector 0.3 0.5 1.3)
-    (tf:euler->quaternion :ax pi))
-   :allowed-collision-objects allowed-collision-objects)
-  (pr2-manip-pm::execute-move-arm-pose
-   :right
-   (tf:make-pose-stamped
-    "base_link" (roslisp:ros-time)
-    (tf:make-3d-vector 0.3 -0.5 1.3)
-    (tf:euler->quaternion :ax pi))
-   :allowed-collision-objects allowed-collision-objects))
+(defparameter *loc-on-sink-counter* nil)
+(defparameter *loc-on-kitchen-island* nil)
+(defparameter *loc-on-pancake-table* nil)
+(defparameter *loc-putdown-spatula-left* nil)
+(defparameter *loc-putdown-spatula-right* nil)
+(defparameter *loc-putdown-pancake-mix* nil)
+(defparameter *pancake-maker* nil)
+(defparameter *spatula-left* nil)
+(defparameter *spatula-right* nil)
+(defparameter *pancake-mix* nil)
+(defparameter *pancake* nil)
+
+(defmacro perceive-a (object)
+  `(cpl:with-failure-handling
+       ((cram-plan-failures:object-not-found (f)
+          (declare (ignore f))
+          (ros-warn (pick-and-place) "Object not found. Retrying.")
+          (cpl:retry)))
+     (perceive-object 'cram-plan-library:a ,object)))
+
+(defmacro pick-object (object &key stationary)
+  `(cpl:with-failure-handling
+       ((cram-plan-failures:manipulation-failure (f)
+          (declare (ignore f))
+          (ensure-arms-up)
+          (cpl:retry))
+        (cram-plan-failures:location-not-reached-failure (f)
+          (declare (ignore f))
+          (ros-warn (pick-and-place) "Cannot reach location. Retrying.")
+          (cpl:retry))
+        (cram-plan-failures:object-not-found (f)
+          (declare (ignore f))
+          (ros-warn (pick-and-place) "Object not found. Retrying.")
+          (cpl:retry)))
+     ,(cond (stationary
+             `(achieve `(cram-plan-library:object-picked ,,object)))
+            (t
+             `(achieve `(cram-plan-library:object-in-hand ,,object))))))
+
+(defmacro place-object (object location &key stationary)
+  `(cpl:with-failure-handling
+       ((cram-plan-failures:manipulation-pose-unreachable (f)
+          (declare (ignore f))
+          (cram-plan-library::retry-with-updated-location
+           ,location (next-solution ,location)))
+        (cram-plan-failures:location-not-reached-failure (f)
+          (declare (ignore f))
+          (ros-warn (pick-and-place) "Cannot reach location. Retrying.")
+          (cpl:retry)))
+     (let ((side (var-value
+                  '?side
+                  (lazy-car (crs:prolog `(cram-plan-library:object-in-hand ,,object ?side))))))
+       ,(cond (stationary
+               `(achieve `(cram-plan-library::object-put ,,object ,,location)))
+              (t
+               `(achieve `(cram-plan-library::object-placed-at ,,object ,,location))))
+       (ensure-arms-up side))))
+
+(defun prepare-global-designators ()
+  (setf *loc-on-sink-counter*
+        (make-designator
+         'location
+         `((on Cupboard)
+           (name "kitchen_sink_block"))))
+  (setf *loc-on-kitchen-island*
+        (make-designator
+         'location
+         `((on Cupboard)
+           (name "kitchen_island"))))
+  (setf *loc-on-pancake-table*
+        (make-designator
+         'location
+         `((on Cupboard)
+           (name "pancake_table"))))
+  (setf *pancake-maker*
+        (make-designator
+         'object
+         `((at ,*loc-on-pancake-table*)
+           (type pancakemaker))))
+  (setf *pancake-mix*
+        (make-designator
+         'object
+         `((at ,*loc-on-sink-counter*)
+           (type pancakemix)
+           (max-handles 1)
+           ,@(mapcar
+              (lambda (handle-object)
+                `(handle ,handle-object))
+              (make-handles
+               0.04
+               :segments 2
+               :starting-angle 0;(/ pi 2)
+               :ax (/ pi 2)
+               :center-offset
+               (tf:make-3d-vector 0.02 0.0 0.0))))))
+  (setf *spatula-left*
+        (make-designator
+         'object
+         `((at ,*loc-on-kitchen-island*)
+           (type spatula)
+           (desig-props:grasp-type desig-props:top-slide-down)
+           (max-handles 1)
+           ,@(mapcar
+              (lambda (handle-object)
+                `(handle ,handle-object))
+              (make-handles
+               0.04
+               :ax (/ pi 2)
+               :grasp-type 'desig-props:top-slide-down
+               :center-offset (tf:make-3d-vector -0.23 0 0.02)))
+           ,@(mapcar
+              (lambda (handle-object)
+                `(handle ,handle-object))
+              (make-handles
+               0.04
+               :ax (/ pi 2)
+               :offset-angle pi
+               :grasp-type 'desig-props:top-slide-down
+               :center-offset (tf:make-3d-vector 0.23 0 0.02))))))
+  (setf *spatula-right*
+        (make-designator
+         'object
+         `((at ,*loc-on-sink-counter*)
+           (type spatula)
+           (desig-props:grasp-type desig-props:top-slide-down)
+           (max-handles 1)
+           ,@(mapcar
+              (lambda (handle-object)
+                `(handle ,handle-object))
+              (make-handles
+               0.04
+               :ax (/ pi 2)
+               :grasp-type 'desig-props:top-slide-down
+               :center-offset (tf:make-3d-vector -0.23 0 0.02)))
+           ,@(mapcar
+              (lambda (handle-object)
+                `(handle ,handle-object))
+              (make-handles
+               0.04
+               :ax (/ pi 2)
+               :offset-angle pi
+               :grasp-type 'desig-props:top-slide-down
+               :center-offset (tf:make-3d-vector 0.23 0 0.02))))))
+  (setf *pancake*
+        (make-designator
+         'object
+         `((at ,(make-designator 'location
+                                 `((on ,*pancake-maker*))))
+           (type pancake))))
+  (setf *loc-putdown-spatula-left*
+        (make-designator
+         'location
+         (append (description *loc-on-pancake-table*)
+                 `((leftof ,*pancake-maker*)))))
+  (setf *loc-putdown-spatula-right*
+        (make-designator
+         'location
+         (append (description *loc-on-pancake-table*)
+                 `((rightof ,*pancake-maker*)))))
+  (setf *loc-putdown-pancake-mix*
+        (make-designator
+         'location
+         (append (description *loc-on-pancake-table*)
+                 `((rightof ,*spatula-right*))))))
+
+(defun drive-to-pancake-pose ()
+  (drive-to-pose (tf:make-pose-stamped
+                  "/map" (roslisp:ros-time)
+                  (tf:make-3d-vector 0.0 0.0 0.0)
+                  (tf:euler->quaternion :az pi))))
+
+(defun face-location (location)
+  (let* ((current-pose (get-robot-pose))
+         (curr-origin (tf:origin current-pose))
+         (loc-pose (reference location))
+         (loc-origin (tf:origin loc-pose)))
+    (let* ((dx (- (tf:x loc-origin) (tf:x curr-origin)))
+           (dy (- (tf:y loc-origin) (tf:y curr-origin)))
+           (l (sqrt (+ (* dx dx) (* dy dy))))
+           (angle (acos (/ dx l))))
+      (drive-to-pose (tf:copy-pose-stamped
+                      current-pose
+                      :orientation (tf:euler->quaternion :az (- angle))
+                      :stamp (roslisp:ros-time))))))
+
+(defun move-arms-up (&key allowed-collision-objects side)
+  (when (or (eql side :left) (not side))
+    (pr2-manip-pm::execute-move-arm-pose
+     :left
+     (tf:make-pose-stamped
+      "base_link" (roslisp:ros-time)
+      (tf:make-3d-vector 0.3 0.5 1.3)
+      (tf:euler->quaternion :ax pi))
+     :allowed-collision-objects allowed-collision-objects))
+  (when (or (eql side :right) (not side))
+    (pr2-manip-pm::execute-move-arm-pose
+     :right
+     (tf:make-pose-stamped
+      "base_link" (roslisp:ros-time)
+      (tf:make-3d-vector 0.3 -0.5 1.3)
+      (tf:euler->quaternion :ax pi))
+     :allowed-collision-objects allowed-collision-objects)))
 
 (defun make-handles (distance-from-center
                      &key
@@ -179,4 +366,72 @@
       (cpl:with-failure-handling ((cram-plan-failures:location-not-reached-failure (f)
                                 (declare (ignore f))
                                 (return-from nav)))
-        (perform act)))))
+        (cpl:pursue
+          (cpl:sleep 5)
+          (perform act))))))
+
+(def-top-level-cram-function see-object (description)
+  (with-process-modules
+    (with-designators ((obj (object description)))
+      (cram-plan-library:perceive-object
+       'cram-plan-library:currently-visible obj))))
+
+(defun ensure-arms-up (&optional side)
+  (cpl:with-failure-handling
+      ((cram-plan-failures:manipulation-failure (f)
+         (declare (ignore f))
+         (cpl:retry)))
+    (move-arms-up :side side)))
+
+(defun renew-collision-environment ()
+  (moveit:clear-collision-environment)
+  (sem-map-coll-env:publish-semantic-map-collision-objects)
+  (sem-map-coll-env:publish-semantic-map-collision-objects))
+
+(defun make-spatula-designator (location &key forced-side)
+  (with-designators
+      ((spatula (object (append
+                         `((desig-props:grasp-type desig-props:top-slide-down)
+                           (desig-props:type desig-props:spatula)
+                           (desig-props:at ,location)
+                           (desig-props:max-handles 1)
+                           ,@(mapcar
+                              (lambda (handle-object)
+                                `(desig-props:handle ,handle-object))
+                              (make-handles
+                               0.04
+                               :ax (/ pi 2)
+                               :grasp-type 'desig-props:top-slide-down
+                               :center-offset (tf:make-3d-vector -0.23 0 0.02)))
+                           ,@(mapcar
+                              (lambda (handle-object)
+                                `(desig-props:handle ,handle-object))
+                              (make-handles
+                               0.04
+                               :ax (/ pi 2)
+                               :offset-angle pi
+                               :grasp-type 'desig-props:top-slide-down
+                               :center-offset (tf:make-3d-vector 0.23 0 0.02))))
+                         (when forced-side
+                           `((desig-props:side ,forced-side)))))))
+    spatula))
+
+(defun prepare-settings ()
+  ;; NOTE(winkler): This validator breaks IK based `to reach' and `to
+  ;; see' location resolution. Disabling it, since everything works
+  ;; just nicely without it. Gotta look into this later.
+  (cram-designators:disable-location-validation-function
+   'bullet-reasoning-designators::check-ik-solution)
+  ;; (cram-designators:disable-location-validation-function
+  ;;  'bullet-reasoning-designators::validate-designator-solution)
+  (cram-uima::config-uima)
+  ;; Setting the timeout for action server responses to a high
+  ;; value. Otherwise, the (very long, > 2.0 seconds) motion planning
+  ;; process will just drop the connection and never execute.
+  (setf actionlib::*action-server-timeout* 20)
+  (beliefstate::enable-logging t)
+  (init-ms-belief-state :debug-window t)
+  (moveit:clear-collision-environment)
+  ;; Twice, because sometimes a ROS message for an object gets lost.
+  (sem-map-coll-env:publish-semantic-map-collision-objects)
+  (sem-map-coll-env:publish-semantic-map-collision-objects))
