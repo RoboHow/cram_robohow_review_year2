@@ -73,6 +73,10 @@
   (ensure-arms-up)
   ;; Position in front of pancake table
   (drive-to-pancake-pose)
+  ;; Check for pancake maker (in case we didn't perceive it before due
+  ;; to not doing the pick and place part)
+  (unless (desig:newest-effective-designator *pancake-maker*)
+    (perceive-a *pancake-maker*))
   ;; Grasp the pancake mix
   (pick-object *pancake-mix* :stationary t)
   ;; Do pancake pouring here
