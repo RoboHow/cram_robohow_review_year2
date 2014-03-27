@@ -86,7 +86,7 @@
                `(achieve `(cram-plan-library::object-placed-at ,,object ,,location))))
        (ensure-arms-up side))))
 
-(defun prepare-global-designators ()
+(defun prepare-global-designators (&key pancake-manipulation-only)
   (setf *loc-on-sink-counter*
         (make-designator
          'location
@@ -107,10 +107,31 @@
          'object
          `((at ,*loc-on-pancake-table*)
            (type pancakemaker))))
+  (setf *pancake*
+        (make-designator
+         'object
+         `((at ,(make-designator 'location
+                                 `((on ,*pancake-maker*))))
+           (type pancake))))
+  (setf *loc-putdown-spatula-left*
+        (make-designator
+         'location
+         (append (description *loc-on-pancake-table*)
+                 `((leftof ,*pancake-maker*)))))
+  (setf *loc-putdown-spatula-right*
+        (make-designator
+         'location
+         (append (description *loc-on-pancake-table*)
+                 `((rightof ,*pancake-maker*)))))
+  (setf *loc-putdown-pancake-mix*
+        (make-designator
+         'location
+         (append (description *loc-on-kitchen-island*))))
   (setf *pancake-mix*
         (make-designator
          'object
-         `((at ,*loc-on-sink-counter*)
+         `((at ,(cond (pancake-manipulation-only *loc-putdown-pancake-mix*)
+                      (t *loc-on-sink-counter*)))
            (type pancakemix)
            (max-handles 1)
            ,@(mapcar
@@ -126,7 +147,8 @@
   (setf *spatula-left*
         (make-designator
          'object
-         `((at ,*loc-on-kitchen-island*)
+         `((at ,(cond (pancake-manipulation-only *loc-putdown-spatula-left*)
+                      (t *loc-on-sink-counter*)))
            (type spatula)
            (desig-props:grasp-type desig-props:top-slide-down)
            (max-handles 1)
@@ -150,7 +172,8 @@
   (setf *spatula-right*
         (make-designator
          'object
-         `((at ,*loc-on-sink-counter*)
+         `((at ,(cond (pancake-manipulation-only *loc-putdown-spatula-right*)
+                      (t *loc-on-sink-counter*)))
            (type spatula)
            (desig-props:grasp-type desig-props:top-slide-down)
            (max-handles 1)
@@ -170,28 +193,7 @@
                :ax (/ pi 2)
                :offset-angle pi
                :grasp-type 'desig-props:top-slide-down
-               :center-offset (tf:make-3d-vector 0.23 0 0.02))))))
-  (setf *pancake*
-        (make-designator
-         'object
-         `((at ,(make-designator 'location
-                                 `((on ,*pancake-maker*))))
-           (type pancake))))
-  (setf *loc-putdown-spatula-left*
-        (make-designator
-         'location
-         (append (description *loc-on-pancake-table*)
-                 `((leftof ,*pancake-maker*)))))
-  (setf *loc-putdown-spatula-right*
-        (make-designator
-         'location
-         (append (description *loc-on-pancake-table*)
-                 `((rightof ,*pancake-maker*)))))
-  (setf *loc-putdown-pancake-mix*
-        (make-designator
-         'location
-         (append (description *loc-on-pancake-table*)
-                 `((rightof ,*spatula-right*))))))
+               :center-offset (tf:make-3d-vector 0.23 0 0.02)))))))
 
 (defun drive-to-pancake-pose ()
   (drive-to-pose (tf:make-pose-stamped

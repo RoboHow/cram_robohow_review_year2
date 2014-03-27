@@ -28,10 +28,25 @@
 
 (in-package :cram-robohow-review-year2)
 
+;;
+;; To run everyting, start the main top-level function:
+;; > (demo)
+;; 
+;; Everything else should be handled correctly. If you want to only
+;; run a part of it, you can do so this way:
+;; 
+;; - Only pick and place:
+;;   > (demo :pancake-manipulation nil)
+;;
+;; - Only pancake manipulation (in this case, the designators will be
+;;   initialized for the correct initial position):
+;;   > (demo :pick-and-place nil)
+;;
+
 (def-top-level-cram-function demo (&key (pick-and-place t) (pancake-manipulation t))
   (prepare-settings)
   (with-process-modules
-    (prepare-global-designators)
+    (prepare-global-designators :pancake-manipulation-only (not pick-and-place))
     (when pick-and-place
       (pick-and-place))
     (when pancake-manipulation
