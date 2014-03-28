@@ -71,10 +71,12 @@
             ((:file "package")
              (:file "sem-map-config" :depends-on ("package"))
              (:file "costmap-metadata" :depends-on ("package"))
+             (:file "household-objects" :depends-on ("package"))
              (:file "facts" :depends-on ("package"))
-             (:file "utils" :depends-on ("package" "facts" "sem-map-config" "costmap-metadata"))
+             (:file "utils" :depends-on ("package" "facts" "household-objects" "sem-map-config" "costmap-metadata"))
              (:file "demo-plans" :depends-on ("package"
                                               "utils"
+                                              "household-objects"
                                               "sem-map-config"
                                               "costmap-metadata"
                                               "facts"))))))
