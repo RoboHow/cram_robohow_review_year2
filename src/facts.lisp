@@ -29,7 +29,7 @@
 
 (defun make-area-restriction-cost-function ()
   (let ((min-x -1.0)
-        (min-y -0.9)
+        (min-y -0.7)
         (max-x  1.7)
         (max-y  2.0)
         (sink-block-min-y 0.0)
@@ -46,16 +46,16 @@
                        (> x min-x)
                        (> y min-y)
                        (< y max-y))
-                  (if (> y 0.3) ;; On kitchen island side
-                      (if (and (< x -0.5) ;; Lower boundary for kitchen island
+                  (if (> y 0.4) ;; On kitchen island side
+                      (if (and (< x -0.6) ;; Lower boundary for kitchen island
                                (> x -0.7))
                           0.0d0
-                          (if (and (> y 0.6)
+                          (if (and (> y 0.65)
                                    (< y 0.8))
                               1.0d0
                               0.0d0))
-                      (if (and (< x -0.6) ;; Lower boundary for pancake table
-                               (> x -0.8))
+                      (if (and (< x -0.4) ;; Lower boundary for pancake table
+                               (> x -0.9))
                           0.0d0
                           1.0d0))
                   0.0d0))))))
