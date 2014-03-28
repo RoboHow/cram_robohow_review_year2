@@ -74,30 +74,38 @@
 (def-cram-function pancake-manipulation ()
   ;; Well-defined home-pose
   (ensure-arms-up)
-  ;; Position in front of pancake table
-  (drive-to-pancake-pose)
+  ;; Position in front of pancake table (far)
+  (drive-to-pancake-pose-far)
   ;; Check for pancake maker (in case we didn't perceive it before due
   ;; to not doing the pick and place part)
   (unless (desig:newest-effective-designator *pancake-maker*)
     (perceive-a *pancake-maker*))
   ;; Grasp the pancake mix
-  (pick-object *pancake-mix* :stationary t)
+  (pick-object (current-desig *pancake-mix*) :stationary t)
+  ;; Position in front of pancake table (close)
+  (drive-to-pancake-pose-close)
   ;; Do pancake pouring here
-  (demo-part-pouring *pancake-mix*)
+  (demo-part-pouring (current-desig *pancake-mix*))
   ;; Put the pancake mix back
-  (place-object *pancake-mix* *loc-putdown-pancake-mix*)
+  (place-object (current-desig *pancake-mix*) *loc-putdown-pancake-mix*)
+  ;; Position in front of pancake table (far)
+  (drive-to-pancake-pose-far)
   ;; Equip the spatulas
-  (with-designators ((spatula-left (object (append (description *spatula-left*)
+  (with-designators ((spatula-left (object (append (description (current-desig *spatula-left*))
                                                    `((side :left)))))
-                     (spatula-right (object (append (description *spatula-right*)
+                     (spatula-right (object (append (description (current-desig *spatula-right*))
                                                     `((side :right))))))
     (equate *spatula-left* spatula-left)
     (pick-object spatula-left :stationary t)
     (equate *spatula-right* spatula-right)
     (pick-object spatula-right :stationary t)
     (perceive-a *pancake*)
+    ;; Position in front of pancake table (close)
+    (drive-to-pancake-pose-close)
     ;; Do the pancake flipping here
     (demo-part-flipping spatula-left spatula-right *pancake* *pancake-maker*)
+    ;; Position in front of pancake table (far)
+    (drive-to-pancake-pose-far)
     ;; Put the spatulas back
     (place-object spatula-left *loc-putdown-spatula-left* :stationary t)
     (place-object spatula-right *loc-putdown-spatula-right* :stationary t))
