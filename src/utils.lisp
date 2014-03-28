@@ -140,7 +140,7 @@
               (make-handles
                0.04
                :segments 2
-               :starting-angle 0;(/ pi 2)
+               :offset-angle (/ pi 2)
                :ax (/ pi 2)
                :center-offset
                (tf:make-3d-vector 0.02 0.0 0.0))))))
@@ -148,7 +148,7 @@
         (make-designator
          'object
          `((at ,(cond (pancake-manipulation-only *loc-putdown-spatula-left*)
-                      (t *loc-on-sink-counter*)))
+                      (t *loc-on-kitchen-island*)))
            (type spatula)
            (desig-props:grasp-type desig-props:top-slide-down)
            (max-handles 1)
@@ -195,10 +195,16 @@
                :grasp-type 'desig-props:top-slide-down
                :center-offset (tf:make-3d-vector 0.23 0 0.02)))))))
 
-(defun drive-to-pancake-pose ()
+(defun drive-to-pancake-pose-far ()
   (drive-to-pose (tf:make-pose-stamped
                   "/map" (roslisp:ros-time)
-                  (tf:make-3d-vector 0.0 0.0 0.0)
+                  (tf:make-3d-vector -0.3 -0.2 0.0)
+                  (tf:euler->quaternion :az pi))))
+
+(defun drive-to-pancake-pose-close ()
+  (drive-to-pose (tf:make-pose-stamped
+                  "/map" (roslisp:ros-time)
+                  (tf:make-3d-vector -0.5 -0.2 0.0)
                   (tf:euler->quaternion :az pi))))
 
 (defun face-location (location)
@@ -236,14 +242,13 @@
 (defun make-handles (distance-from-center
                      &key
                        (segments 1)
-                       (starting-angle 0.0)
                        (ax 0.0) (ay 0.0) (az 0.0)
                        (offset-angle 0.0)
                        grasp-type
                        (center-offset
                         (tf:make-identity-vector)))
   (loop for i from 0 below segments
-        as current-angle = (+ (* 2 pi (float (+ (/ i segments) starting-angle)))
+        as current-angle = (+ (* 2 pi (float (/ i segments)))
                               offset-angle)
         as handle-pose = (tf:make-pose
                           (tf:make-3d-vector
