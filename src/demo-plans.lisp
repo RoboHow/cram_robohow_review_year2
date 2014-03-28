@@ -72,7 +72,7 @@
   (ensure-arms-up))
 
 (def-cram-function pancake-manipulation ()
-  ;; Well-defined start pose
+  ;; Well-defined home-pose
   (ensure-arms-up)
   ;; Position in front of pancake table
   (drive-to-pancake-pose)
@@ -100,7 +100,9 @@
     (demo-part-flipping spatula-left spatula-right *pancake* *pancake-maker*)
     ;; Put the spatulas back
     (place-object spatula-left *loc-putdown-spatula-left* :stationary t)
-    (place-object spatula-right *loc-putdown-spatula-right* :stationary t)))
+    (place-object spatula-right *loc-putdown-spatula-right* :stationary t))
+  ;; Well-defined home-pose
+  (ensure-arms-up))
 
 (def-cram-function demo-part-pouring (pancake-mix)
   ;; Implement the pouring part.
