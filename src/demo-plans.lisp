@@ -53,20 +53,23 @@
       (pancake-manipulation))))
 
 (def-cram-function pick-and-place ()
-  (let ((transport-details (list (list (cons *spatula-left* *loc-putdown-spatula-left*))
-                                 (list (cons *spatula-right* *loc-putdown-spatula-right*)
-                                       (cons *pancake-mix* *loc-putdown-pancake-mix*)))))
-    (dolist (tr-set transport-details)
-      (ensure-arms-up)
-      (dolist (transport-detail tr-set)
-        (destructuring-bind (object . destination) transport-detail
-          (declare (ignore destination))
-          (pick-object object)))
-      (dolist (transport-detail tr-set)
-        (unless (desig:newest-effective-designator *pancake-maker*)
-          (perceive-a *pancake-maker*))
-        (destructuring-bind (object . destination) transport-detail
-          (place-object object destination))))))
+  ;; Well-defined home-pose
+  (ensure-arms-up)
+  ;; Get the first spatula from the kitchen island
+  (pick-object *spatula-left*)
+  ;; Approach the pancake table and check where the pancake maker is
+  (perceive-a *pancake-maker*)
+  ;; Put the spatula down to the left of the pancake maker
+  (place-object *spatula-left* *loc-putdown-spatula-left*)
+  ;; Get the pancake mix and the second spatula from the sink block
+  (pick-object *pancake-mix*)
+  (pick-object *spatula-right*)
+  ;; Place the spatula to the right of the pancake maker and the
+  ;; pancake mix on the kitchen island, near to the right spatula
+  (place-object *spatula-right* *loc-putdown-spatula-right*)
+  (place-object *pancake-mix* *loc-putdown-pancake-mix*)
+  ;; Well-defined home-pose
+  (ensure-arms-up))
 
 (def-cram-function pancake-manipulation ()
   ;; Well-defined start pose
