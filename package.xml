@@ -40,14 +40,15 @@
   <build_depend>pr2_arm_kinematics</build_depend>
   <build_depend>robosherlock_process_module</build_depend>
   <build_depend>cram_beliefstate</build_depend>
-  <build_depend>grasp_stability_msgs</build_depend>
-  <build_depend>cram_graspstability</build_depend>
+  <!--build_depend>grasp_stability_msgs</build_depend-->
+  <!--build_depend>cram_graspstability</build_depend-->
   <build_depend>cram_pr2_knowledge</build_depend>
   <build_depend>pr2_manipulation_process_module</build_depend>
   <build_depend>pr2_manipulation_knowledge</build_depend>
   <build_depend>pr2_navigation_process_module</build_depend>
   <build_depend>pr2_reachability_costmap</build_depend>
   <build_depend>designator_integration_msgs</build_depend>
+  <build_depend>cram_pr2_fccl_demo</build_depend>
 
   <run_depend>cram_language</run_depend>
   <run_depend>cram_reasoning</run_depend>
@@ -73,13 +74,13 @@
   <run_depend>pr2_arm_kinematics</run_depend>
   <run_depend>robosherlock_process_module</run_depend>
   <run_depend>cram_beliefstate</run_depend>
-  <run_depend>grasp_stability_msgs</run_depend>
-  <run_depend>cram_graspstability</run_depend>
+  <!--run_depend>grasp_stability_msgs</run_depend-->
+  <!--run_depend>cram_graspstability</run_depend-->
   <run_depend>cram_pr2_knowledge</run_depend>
   <run_depend>pr2_manipulation_process_module</run_depend>
   <run_depend>pr2_manipulation_knowledge</run_depend>
   <run_depend>pr2_navigation_process_module</run_depend>
   <run_depend>pr2_reachability_costmap</run_depend>
   <run_depend>designator_integration_msgs</run_depend>
-
+  <run_depend>cram_pr2_fccl_demo</run_depend>
 </package>

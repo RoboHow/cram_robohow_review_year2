@@ -112,10 +112,8 @@
   ;; Well-defined home-pose
   (ensure-arms-up))
 
-(def-cram-function demo-part-pouring (pancake-mix)
-  ;; Implement the pouring part.
-  )
+(def-cram-function demo-part-pouring (pancake-mix pancake-maker)
+  (pr2-fccl-demo::demo-part-pouring pancake-mix pancake-maker))
 
 (def-cram-function demo-part-flipping (spatula-left spatula-right pancake pancake-maker)
-  ;; Implement the flipping part.
-  )
+  (pr2-fccl-demo::demo-part-flipping spatula-left spatula-right pancake pancake-maker))

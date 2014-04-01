@@ -43,6 +43,7 @@
                cram-pr2-knowledge
                cram-plan-knowledge
                cram-environment-representation
+               cram-pr2-fccl-demo
                pr2-manipulation-knowledge
                pr2-manipulation-process-module
                pr2-reachability-costmap
@@ -62,9 +63,10 @@
                designator_integration_msgs-msg
                designator_integration_msgs-srv
                cram-beliefstate
-               grasp_stability_msgs-msg
-               grasp_stability_msgs-srv
-               cram-graspstability)
+               ;; grasp_stability_msgs-msg
+               ;; grasp_stability_msgs-srv
+               ;; cram-graspstability
+               )
   :components
   ((:module "src"
             :components
