@@ -28,7 +28,7 @@
 (in-package :cram-robohow-review-year2)
 
 (defun make-area-restriction-cost-function ()
-  (let ((min-x -1.0)
+  (let ((min-x -1.2)
         (min-y -0.7)
         (max-x  1.7)
         (max-y  2.0)
@@ -54,8 +54,8 @@
                                    (< y 0.8))
                               1.0d0
                               0.0d0))
-                      (if (and (< x -0.4) ;; Lower boundary for pancake table
-                               (> x -0.9))
+                      (if (and (< x -0.6) ;; Lower boundary for pancake table
+                               (> x -0.95))
                           0.0d0
                           1.0d0))
                   0.0d0))))))

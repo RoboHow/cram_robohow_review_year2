@@ -58,6 +58,7 @@
   ;; Get the first spatula from the kitchen island
   (pick-object *spatula-left*)
   ;; Approach the pancake table and check where the pancake maker is
+  (drive-to-pancake-pose-far)
   (perceive-a *pancake-maker*)
   ;; Put the spatula down to the left of the pancake maker
   (place-object *spatula-left* *loc-putdown-spatula-left*)
