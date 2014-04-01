@@ -40,13 +40,19 @@
 (defparameter *pancake-mix* nil)
 (defparameter *pancake* nil)
 
-(defmacro perceive-a (object)
+(defmacro perceive-a (object &key stationary)
   `(cpl:with-failure-handling
        ((cram-plan-failures:object-not-found (f)
           (declare (ignore f))
           (ros-warn (pick-and-place) "Object not found. Retrying.")
           (cpl:retry)))
-     (perceive-object 'cram-plan-library:a ,object)))
+     (cond (,stationary
+            (let ((at (desig-prop-value ,object 'desig-props:at)))
+              (achieve `(cram-plan-library:looking-at ,(reference at)))
+              (first (perceive-object
+                      'cram-plan-library:currently-visible
+                      ,object))))
+           (t (perceive-object 'cram-plan-library:a ,object)))))
 
 (defmacro pick-object (object &key stationary)
   `(cpl:with-failure-handling
@@ -455,3 +461,31 @@
   ;; Twice, because sometimes a ROS message for an object gets lost.
   (sem-map-coll-env:publish-semantic-map-collision-objects)
   (sem-map-coll-env:publish-semantic-map-collision-objects))
+
+(defun set-initial-joint-values-pouring ()
+  (moveit::move-link-joint-states
+   "right_arm" `(,(cons "r_upper_arm_roll_joint" -1.392565491097796)
+                 ,(cons "r_shoulder_pan_joint" -1.0650093105988152)
+                 ,(cons "r_shoulder_lift_joint" 0.26376743371555295)
+                 ,(cons "r_forearm_roll_joint" -0.524)
+                 ,(cons "r_elbow_flex_joint" -1.629946646305397)
+                 ,(cons "r_wrist_flex_joint" -0.9668414952685922)
+                 ,(cons "r_wrist_roll_joint" 1.8614))))
+
+(defun set-initial-joint-values-flipping ()
+  (moveit::move-link-joint-states
+   "right_arm" `(,(cons "r_upper_arm_roll_joint" -1.32)
+                 ,(cons "r_shoulder_pan_joint" -1.08)
+                 ,(cons "r_shoulder_lift_joint" 0.16)
+                 ,(cons "r_forearm_roll_joint" 0.0)
+                 ,(cons "r_elbow_flex_joint" -1.14)
+                 ,(cons "r_wrist_flex_joint" -1.05)
+                 ,(cons "r_wrist_roll_joint" 1.57)))
+  (moveit::move-link-joint-states
+   "left_arm" `(,(cons "l_upper_arm_roll_joint" 1.32)
+                ,(cons "l_shoulder_pan_joint" 1.08)
+                ,(cons "l_shoulder_lift_joint" 0.16)
+                ,(cons "l_forearm_roll_joint" 0.0)
+                ,(cons "l_elbow_flex_joint" -1.14)
+                ,(cons "l_wrist_flex_joint" -1.05)
+                ,(cons "l_wrist_roll_joint" 1.57))))

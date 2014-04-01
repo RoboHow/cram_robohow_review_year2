@@ -82,39 +82,77 @@
   (unless (desig:newest-effective-designator *pancake-maker*)
     (perceive-a *pancake-maker*))
   ;; Grasp the pancake mix
-  (pick-object (current-desig *pancake-mix*) :stationary t)
-  ;; Position in front of pancake table (close)
-  (drive-to-pancake-pose-close)
-  ;; Do pancake pouring here
-  (demo-part-pouring (current-desig *pancake-mix*))
-  ;; Put the pancake mix back
-  (place-object (current-desig *pancake-mix*) *loc-putdown-pancake-mix*)
-  ;; Position in front of pancake table (far)
-  (drive-to-pancake-pose-far)
-  ;; Equip the spatulas
-  (with-designators ((spatula-left (object (append (description (current-desig *spatula-left*))
-                                                   `((side :left)))))
-                     (spatula-right (object (append (description (current-desig *spatula-right*))
-                                                    `((side :right))))))
-    (equate *spatula-left* spatula-left)
-    (pick-object spatula-left :stationary t)
-    (equate *spatula-right* spatula-right)
-    (pick-object spatula-right :stationary t)
-    (perceive-a *pancake*)
+  (with-designators ((pancake-mix (object (append (description (current-desig *pancake-mix*))
+                                                  `((side :left))))))
+    (equate *pancake-mix* pancake-mix)
+    (pick-object (current-desig pancake-mix) :stationary t)
     ;; Position in front of pancake table (close)
     (drive-to-pancake-pose-close)
-    ;; Do the pancake flipping here
-    (demo-part-flipping spatula-left spatula-right *pancake* *pancake-maker*)
+    ;; Do pancake pouring here
+    (demo-part-pouring (current-desig pancake-mix) (current-desig *pancake-maker*))
+    ;; Put the pancake mix back
+    (place-object (current-desig pancake-mix) *loc-putdown-pancake-mix*)
     ;; Position in front of pancake table (far)
     (drive-to-pancake-pose-far)
-    ;; Put the spatulas back
-    (place-object spatula-left *loc-putdown-spatula-left* :stationary t)
-    (place-object spatula-right *loc-putdown-spatula-right* :stationary t))
-  ;; Well-defined home-pose
-  (ensure-arms-up))
+    ;; Equip the spatulas
+    (with-designators ((spatula-left (object (append (description (current-desig *spatula-left*))
+                                                     `((side :left)))))
+                       (spatula-right (object (append (description (current-desig *spatula-right*))
+                                                      `((side :right))))))
+      (equate *spatula-left* spatula-left)
+      (pick-object spatula-left :stationary t)
+      (equate *spatula-right* spatula-right)
+      (pick-object spatula-right :stationary t)
+      (perceive-a *pancake*)
+      ;; Position in front of pancake table (close)
+      (drive-to-pancake-pose-close)
+      ;; Do the pancake flipping here
+      (demo-part-flipping spatula-left spatula-right *pancake* *pancake-maker*)
+      ;; Position in front of pancake table (far)
+      (drive-to-pancake-pose-far)
+      ;; Put the spatulas back
+      (place-object spatula-left *loc-putdown-spatula-left* :stationary t)
+      (place-object spatula-right *loc-putdown-spatula-right* :stationary t))
+    ;; Well-defined home-pose
+    (ensure-arms-up)))
 
-(def-cram-function demo-part-pouring (pancake-mix pancake-maker)
+(defun demo-part-pouring (pancake-mix pancake-maker)
+  (set-initial-joint-values-pouring)
+  (cram-pr2-fccl-demo::set-pose
+   pancake-mix
+   (cl-tf:make-pose-stamped
+    "r_gripper_tool_frame" 0
+    (cl-transforms:make-3d-vector 0.0 0.0 0.0)
+    (cl-transforms:make-identity-rotation)))
+  (cram-pr2-fccl-demo::set-pose
+   pancake-maker
+   (reference (desig-prop-value
+               (desig:current-desig *pancake-maker*)
+               'desig-props:at)))
   (pr2-fccl-demo::demo-part-pouring pancake-mix pancake-maker))
 
-(def-cram-function demo-part-flipping (spatula-left spatula-right pancake pancake-maker)
+(defun demo-part-flipping (spatula-left spatula-right pancake pancake-maker)
+  (set-initial-joint-values-flipping)
+  (cram-pr2-fccl-demo::set-pose
+   spatula-left
+   (cl-tf:make-pose-stamped
+    "l_gripper_tool_frame" 0
+    (cl-transforms:make-3d-vector 0.0 0.0 0.0)
+    (cl-transforms:make-identity-rotation)))
+  (cram-pr2-fccl-demo::set-pose
+   spatula-right
+   (cl-tf:make-pose-stamped
+    "r_gripper_tool_frame" 0
+    (cl-transforms:make-3d-vector 0.0 0.0 0.0)
+    (cl-transforms:make-identity-rotation)))
+  (cram-pr2-fccl-demo::set-pose
+   pancake
+   (reference (desig-prop-value
+               (desig:current-desig pancake-maker)
+               'desig-props:at)))
+  (cram-pr2-fccl-demo::set-pose
+   pancake-maker
+   (reference (desig-prop-value
+               (desig:current-desig pancake-maker)
+               'desig-props:at)))
   (pr2-fccl-demo::demo-part-flipping spatula-left spatula-right pancake pancake-maker))
