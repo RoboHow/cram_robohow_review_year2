@@ -67,7 +67,6 @@
                ;; grasp_stability_msgs-msg
                ;; grasp_stability_msgs-srv
                ;; cram-graspstability
-               )
   :components
   ((:module "src"
             :components
