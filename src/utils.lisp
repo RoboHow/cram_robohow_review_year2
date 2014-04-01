@@ -117,12 +117,20 @@
         (make-designator
          'location
          (append (description *loc-on-pancake-table*)
-                 `((leftof ,*pancake-maker*)))))
+                 `((desig-props:near desig-props::pancakemaker0)
+                   (desig-props:left-of desig-props::pancakemaker0)
+                   (desig-props:for desig-props::spatula0)
+                   (desig-props:on Cupboard)
+                   (desig-props:name "pancake_table")))))
   (setf *loc-putdown-spatula-right*
         (make-designator
          'location
          (append (description *loc-on-pancake-table*)
-                 `((rightof ,*pancake-maker*)))))
+                 `((desig-props:near desig-props::pancakemaker0)
+                   (desig-props:right-of desig-props::pancakemaker0)
+                   (desig-props:for desig-props::spatula0)
+                   (desig-props:on Cupboard)
+                   (desig-props:name "pancake_table")))))
   (setf *loc-putdown-pancake-mix*
         (make-designator
          'location
@@ -429,8 +437,12 @@
   ;; just nicely without it. Gotta look into this later.
   (cram-designators:disable-location-validation-function
    'bullet-reasoning-designators::check-ik-solution)
-  ;; (cram-designators:disable-location-validation-function
-  ;;  'bullet-reasoning-designators::validate-designator-solution)
+  (cram-designators:disable-location-validation-function
+   'spatial-relations-costmap::potential-field-costmap-pose-function)
+  (cram-designators:disable-location-validation-function
+   'spatial-relations-costmap::collision-pose-validator)
+  (cram-designators:disable-location-validation-function
+   'bullet-reasoning-designators::validate-designator-solution)
   (cram-uima::config-uima)
   ;; Setting the timeout for action server responses to a high
   ;; value. Otherwise, the (very long, > 2.0 seconds) motion planning
@@ -438,6 +450,7 @@
   (setf actionlib::*action-server-timeout* 20)
   (beliefstate::enable-logging t)
   (init-ms-belief-state :debug-window t)
+  (setf btr::*bb-comparison-validity-threshold* 0.03)
   (moveit:clear-collision-environment)
   ;; Twice, because sometimes a ROS message for an object gets lost.
   (sem-map-coll-env:publish-semantic-map-collision-objects)

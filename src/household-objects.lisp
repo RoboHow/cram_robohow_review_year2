@@ -29,4 +29,3 @@
 (in-package :cram-robohow-review-year2)
 
 (defparameter *mesh-files* '((pancakemix "package://cram_robohow_review_year2/resources/mondamin.stl" t)))
-

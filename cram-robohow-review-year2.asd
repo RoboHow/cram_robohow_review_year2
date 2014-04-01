@@ -64,7 +64,8 @@
                cram-beliefstate
                grasp_stability_msgs-msg
                grasp_stability_msgs-srv
-               cram-graspstability)
+               cram-graspstability
+               spatial-relations-costmap)
   :components
   ((:module "src"
             :components

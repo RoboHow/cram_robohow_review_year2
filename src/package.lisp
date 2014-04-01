@@ -51,4 +51,5 @@
                      #:color #:size #:shape #:2d-range #:spatula
                      #:obstacle #:aware #:pancakemaker #:pancakemix
                      #:pancake #:side #:rightof #:leftof #:handle
-                     #:max-handles #:top-slide-down))
+                     #:max-handles #:top-slide-down #:behind #:in-front-of
+                     #:left-of #:right-of #:for))
