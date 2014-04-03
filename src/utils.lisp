@@ -40,7 +40,7 @@
 (defparameter *pancake-mix* nil)
 (defparameter *pancake* nil)
 
-(defmacro perceive-a (object &key stationary)
+(defmacro perceive-a (object &key stationary (move-head t))
   `(cpl:with-failure-handling
        ((cram-plan-failures:object-not-found (f)
           (declare (ignore f))
@@ -48,7 +48,8 @@
           (cpl:retry)))
      (cond (,stationary
             (let ((at (desig-prop-value ,object 'desig-props:at)))
-              (achieve `(cram-plan-library:looking-at ,(reference at)))
+              (when ,move-head
+                (achieve `(cram-plan-library:looking-at ,(reference at))))
               (first (perceive-object
                       'cram-plan-library:currently-visible
                       ,object))))
@@ -116,8 +117,7 @@
   (setf *pancake*
         (make-designator
          'object
-         `((at ,(make-designator 'location
-                                 `((on ,*pancake-maker*))))
+         `((at ,*loc-on-pancake-table*)
            (type pancake))))
   (setf *loc-putdown-spatula-left*
         (make-designator
@@ -173,7 +173,7 @@
                0.04
                :ax (/ pi 2)
                :grasp-type 'desig-props:top-slide-down
-               :center-offset (tf:make-3d-vector -0.23 0 0.02)))
+               :center-offset (tf:make-3d-vector -0.23 0 0.01)))
            ,@(mapcar
               (lambda (handle-object)
                 `(handle ,handle-object))
@@ -182,7 +182,7 @@
                :ax (/ pi 2)
                :offset-angle pi
                :grasp-type 'desig-props:top-slide-down
-               :center-offset (tf:make-3d-vector 0.23 0 0.02))))))
+               :center-offset (tf:make-3d-vector 0.23 0 0.01))))))
   (setf *spatula-right*
         (make-designator
          'object
@@ -209,17 +209,35 @@
                :grasp-type 'desig-props:top-slide-down
                :center-offset (tf:make-3d-vector 0.23 0 0.02)))))))
 
+(defun drive-to-spatula-right-see-pose ()
+  (drive-to-pose (tf:make-pose-stamped
+                  "/map" (roslisp:ros-time)
+                  (tf:make-3d-vector -0.08761 -0.37177628 0.0)
+                  (tf:euler->quaternion :az (- pi (/ pi 8))))))
+
+(defun drive-to-spatula-left-see-pose ()
+  (drive-to-pose (tf:make-pose-stamped
+                  "/map" (roslisp:ros-time)
+                  (tf:make-3d-vector -0.08761 -0.37177628 0.0)
+                  (tf:euler->quaternion :az (+ pi (/ pi 8))))))
+
+(defun drive-to-pancake-mix-pickup-pose ()
+  (drive-to-pose (tf:make-pose-stamped
+                  "/map" (roslisp:ros-time)
+                  (tf:make-3d-vector -0.13341 0.772488 0.0)
+                  (tf:make-quaternion 0 0 1 -0.023))))
+
 (defun drive-to-pancake-pose-far ()
   (drive-to-pose (tf:make-pose-stamped
                   "/map" (roslisp:ros-time)
-                  (tf:make-3d-vector -0.3 -0.2 0.0)
-                  (tf:euler->quaternion :az pi))))
+                  (tf:make-3d-vector -0.08761 -0.37177628 0.0)
+                  (tf:make-quaternion 0 0 1 -0.01167))))
 
 (defun drive-to-pancake-pose-close ()
   (drive-to-pose (tf:make-pose-stamped
                   "/map" (roslisp:ros-time)
-                  (tf:make-3d-vector -0.5 -0.2 0.0)
-                  (tf:euler->quaternion :az pi))))
+                  (tf:make-3d-vector -0.40761 -0.25177628 0.0)
+                  (tf:make-quaternion 0 0 1 -0.01167))))
 
 (defun face-location (location)
   (let* ((current-pose (get-robot-pose))
@@ -242,7 +260,7 @@
      (tf:make-pose-stamped
       "base_link" (roslisp:ros-time)
       (tf:make-3d-vector 0.3 0.5 1.3)
-      (tf:euler->quaternion :ax pi))
+      (tf:euler->quaternion :ax 0));pi))
      :allowed-collision-objects allowed-collision-objects))
   (when (or (eql side :right) (not side))
     (pr2-manip-pm::execute-move-arm-pose
@@ -250,7 +268,7 @@
      (tf:make-pose-stamped
       "base_link" (roslisp:ros-time)
       (tf:make-3d-vector 0.3 -0.5 1.3)
-      (tf:euler->quaternion :ax pi))
+      (tf:euler->quaternion :ax 0));pi))
      :allowed-collision-objects allowed-collision-objects)))
 
 (defun make-handles (distance-from-center
@@ -388,7 +406,7 @@
                                 (declare (ignore f))
                                 (return-from nav)))
         (cpl:pursue
-          (cpl:sleep 5)
+          (sleep 10)
           (perform act))))))
 
 (def-top-level-cram-function see-object (description)
@@ -456,7 +474,7 @@
   (setf actionlib::*action-server-timeout* 20)
   (beliefstate::enable-logging t)
   (init-ms-belief-state :debug-window t)
-  (setf btr::*bb-comparison-validity-threshold* 0.03)
+  (setf btr::*bb-comparison-validity-threshold* 0.1)
   (moveit:clear-collision-environment)
   ;; Twice, because sometimes a ROS message for an object gets lost.
   (sem-map-coll-env:publish-semantic-map-collision-objects)
@@ -489,3 +507,37 @@
                 ,(cons "l_elbow_flex_joint" -1.14)
                 ,(cons "l_wrist_flex_joint" -1.05)
                 ,(cons "l_wrist_roll_joint" 1.57))))
+
+(defmethod pr2-manip-pm::on-execute-grasp-with-effort cram-beliefstate
+    (object-name)
+  (format t "Hook asked for grasp effort for object: ~a~%"
+          object-name)
+  (cond ((or (eql object-name 'desig-props::spatula0)
+             (eql object-name 'desig-props::spatula1))
+         100.0)
+        (t 25.0)))
+
+(defmethod pr2-manip-pm::on-execute-grasp-gripper-closed cram-beliefstate
+  (object-name gripper-effort gripper-close-pos side pregrasp-pose safe-pose)
+  (when (eql object-name 'desig-props::pancakemix0)
+    (cpl:with-failure-handling
+        ((cpl:policy-check-condition-met (f)
+           (declare (ignore f))
+           (pr2-manip-pm::open-gripper side :max-effort gripper-effort
+                                            :position gripper-close-pos)
+           (pr2-manip-pm::execute-move-arm-pose side pregrasp-pose)
+           (when safe-pose
+             (pr2-manip-pm::execute-move-arm-pose side safe-pose))
+           (when object-name
+             (moveit:add-collision-object object-name))
+           (cpl:fail 'manipulation-pose-unreachable)))
+      (cpl:with-policy cram-graspstability::grasp-stability-awareness
+          ("grasp" 0.5d0 "touch" (symbol-name object-name))
+        (cpl:sleep* 5)))))
+
+(defmethod pr2-manip-pm::on-put-down-reorientation-count cram-beliefstate
+  (object-designator)
+  (let ((name (desig-prop-value object-designator 'desig-props:name)))
+    (when (or (eql name 'desig-props::spatula0)
+              (eql name 'desig-props::spatula1))
+      2)))
