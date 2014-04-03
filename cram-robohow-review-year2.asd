@@ -63,10 +63,8 @@
                designator_integration_msgs-msg
                designator_integration_msgs-srv
                cram-beliefstate
-               spatial-relations-costmap)
-               ;; grasp_stability_msgs-msg
-               ;; grasp_stability_msgs-srv
-               ;; cram-graspstability
+               spatial-relations-costmap
+               cram-graspstability)
   :components
   ((:module "src"
             :components
@@ -75,7 +73,11 @@
              (:file "costmap-metadata" :depends-on ("package"))
              (:file "household-objects" :depends-on ("package"))
              (:file "facts" :depends-on ("package"))
-             (:file "utils" :depends-on ("package" "facts" "household-objects" "sem-map-config" "costmap-metadata"))
+             (:file "utils" :depends-on ("package"
+                                         "facts"
+                                         "household-objects"
+                                         "sem-map-config"
+                                         "costmap-metadata"))
              (:file "demo-plans" :depends-on ("package"
                                               "utils"
                                               "household-objects"
