@@ -28,8 +28,8 @@
 (in-package :cram-robohow-review-year2)
 
 (defun make-area-restriction-cost-function ()
-  (let ((min-x -1.2)
-        (min-y -0.7)
+  (let ((min-x -1.1)
+        (min-y -0.95)
         (max-x  1.7)
         (max-y  2.0)
         (sink-block-min-y 0.0)
@@ -60,8 +60,20 @@
                           1.0d0))
                   0.0d0))))))
 
+(defun restrict-cm-sp-rel-mgc (center-x center-y size)
+  (lambda (x y)
+    (if (and (> x (- center-x size))
+             (< x (+ center-x size))
+             (> y (- center-y size))
+             (< y (+ center-y size)))
+        1.0d0
+        0.0d0)))
+
 (defmethod costmap-generator-name->score ((name (common-lisp:eql 'area-restriction-distribution)))
   7)
+
+(defmethod costmap-generator-name->score ((name (common-lisp:eql 'restrict-cm-sp-rel-mgc)))
+  8)
 
 (def-fact-group demo-costmap-desigs (desig-costmap)
 
@@ -72,4 +84,26 @@
     (costmap ?cm)
     (costmap-add-function area-restriction-distribution
                           (make-area-restriction-cost-function)
+                          ?cm))
+  
+  (<- (desig-costmap ?desig ?cm)
+    (desig-prop ?desig (desig-props:left-of desig-props::pancakemaker0))
+    (desig-prop ?desig (desig-props:near desig-props::pancakemaker0))
+    (desig-prop ?desig (desig-props:for desig-props::spatula0))
+    (desig-prop ?desig (desig-props:on Cupboard))
+    (desig-prop ?desig (desig-props:name "pancake_table"))
+    (costmap ?cm)
+    (costmap-add-function restrict-cm-sp-rel-mgc
+                          (restrict-cm-sp-rel-mgc -1.0 -1.1 0.5)
+                          ?cm))
+
+  (<- (desig-costmap ?desig ?cm)
+    (desig-prop ?desig (desig-props:right-of desig-props::pancakemaker0))
+    (desig-prop ?desig (desig-props:near desig-props::pancakemaker0))
+    (desig-prop ?desig (desig-props:for desig-props::spatula0))
+    (desig-prop ?desig (desig-props:on Cupboard))
+    (desig-prop ?desig (desig-props:name "pancake_table"))
+    (costmap ?cm)
+    (costmap-add-function restrict-cm-sp-rel-mgc
+                          (restrict-cm-sp-rel-mgc -1.0 0.0 0.2)
                           ?cm)))
