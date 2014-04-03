@@ -523,16 +523,16 @@
     (cpl:with-failure-handling
         ((cpl:policy-check-condition-met (f)
            (declare (ignore f))
-           (pr2-manip-pm::open-gripper side :max-effort gripper-effort
-                                            :position gripper-close-pos)
+           (pr2-manip-pm::open-gripper side)
            (pr2-manip-pm::execute-move-arm-pose side pregrasp-pose)
            (when safe-pose
              (pr2-manip-pm::execute-move-arm-pose side safe-pose))
            (when object-name
              (moveit:add-collision-object object-name))
-           (cpl:fail 'manipulation-pose-unreachable)))
+           (cpl:fail 'cram-plan-library::manipulation-pose-unreachable)))
       (cpl:with-policy cram-graspstability::grasp-stability-awareness
-          ("grasp" 0.5d0 "touch" (symbol-name object-name))
+          ("grasp" 0.5d0 "touch" "PANCAKE-MIX")
+        ;;(symbol-name object-name)
         (cpl:sleep* 5)))))
 
 (defmethod pr2-manip-pm::on-put-down-reorientation-count cram-beliefstate
