@@ -31,7 +31,7 @@
   (let ((min-x -1.1)
         (min-y -0.95)
         (max-x  1.7)
-        (max-y  2.0)
+        (max-y  1.7)
         (sink-block-min-y 0.0)
         (sink-block-max-y 1.0))
     (lambda (x y)

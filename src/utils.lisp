@@ -149,12 +149,13 @@
                       (t *loc-on-sink-counter*)))
            (type pancakemix)
            (max-handles 1)
+           (side :right)
            ,@(mapcar
               (lambda (handle-object)
                 `(handle ,handle-object))
               (make-handles
                0.04
-               :segments 2
+               :segments 8
                :offset-angle (/ pi 2)
                :ax (/ pi 2)
                :center-offset
@@ -165,6 +166,7 @@
          `((at ,(cond (pancake-manipulation-only *loc-putdown-spatula-left*)
                       (t *loc-on-kitchen-island*)))
            (type spatula)
+           (side :left)
            (desig-props:grasp-type desig-props:top-slide-down)
            (max-handles 1)
            ,@(mapcar
@@ -500,7 +502,7 @@
                  ,(cons "r_forearm_roll_joint" 0.0)
                  ,(cons "r_elbow_flex_joint" -1.14)
                  ,(cons "r_wrist_flex_joint" -1.05)
-                 ,(cons "r_wrist_roll_joint" 1.57)))
+                 ,(cons "r_wrist_roll_joint" -1.57)))
   (moveit::move-link-joint-states
    "left_arm" `(,(cons "l_upper_arm_roll_joint" 1.32)
                 ,(cons "l_shoulder_pan_joint" 1.08)
@@ -508,7 +510,7 @@
                 ,(cons "l_forearm_roll_joint" 0.0)
                 ,(cons "l_elbow_flex_joint" -1.14)
                 ,(cons "l_wrist_flex_joint" -1.05)
-                ,(cons "l_wrist_roll_joint" 1.57))))
+                ,(cons "l_wrist_roll_joint" -1.57))))
 
 (defmethod pr2-manip-pm::on-execute-grasp-with-effort cram-beliefstate
     (object-name)
@@ -534,12 +536,12 @@
            (cpl:fail 'cram-plan-library::manipulation-pose-unreachable)))
       (cpl:with-policy cram-graspstability::grasp-stability-awareness
           ("grasp" 0.5d0 "touch" *grasp-stability-subject*)
-        (cpl:sleep* 3)))))
+        (cpl:sleep* 5)))))
 
-(defmethod on-execute-grasp-gripper-positioned-for-grasp cram-beliefstate
+(defmethod pr2-manip-pm::on-execute-grasp-gripper-positioned-for-grasp cram-beliefstate
     (object-name gripper-effort gripper-close-pos side pregrasp-pose safe-pose)
-  (when (eql object-name 'desig-props::pancakemix0)
-    (wait-for-external-trigger)
+  (wait-for-external-trigger)
+  (when (and nil (eql object-name 'desig-props::pancakemix0))
     (cpl:with-failure-handling
         ((cpl:policy-check-condition-met (f)
            (declare (ignore f))
@@ -551,7 +553,7 @@
            (cpl:fail 'cram-plan-library::manipulation-pose-unreachable)))
       (cpl:with-policy cram-graspstability::grasp-stability-awareness
           ("grasp" 0.5d0 "vision" *grasp-stability-subject*)
-        (cpl:sleep* 3)))))
+        (cpl:sleep* 5)))))
 
 (defmethod pr2-manip-pm::on-put-down-reorientation-count cram-beliefstate
   (object-designator)
