@@ -29,7 +29,9 @@
 (in-package :cram-robohow-review-year2)
 
 ;;
-;; To run everyting, start the main top-level function:
+;; To run everyting (except for the grasp stability), start the main
+;; top-level function:
+;; 
 ;; > (demo)
 ;; 
 ;; Everything else should be handled correctly. If you want to only
@@ -41,6 +43,12 @@
 ;; - Only pancake manipulation (in this case, the designators will be
 ;;   initialized for the correct initial position):
 ;;   > (demo :pick-and-place nil)
+;;
+;; - To run ONLY the grasp stability estimation part, run:
+;;   > (demo :grasp-stability t)
+;;   
+;;   This part does not run in conjunction with other parts, as it is
+;;   a separate demo.
 ;;
 
 (def-top-level-cram-function demo (&key (pick-and-place t)
@@ -111,6 +119,8 @@
         (drive-to-pancake-pose-close)
         ;; Do pancake pouring here
         (demo-part-pouring (current-desig pancake-mix) (current-desig pancake-maker))
+        ;; Move the right arm back up
+        (ensure-arms-up :right)
         ;; Put the pancake mix back
         (place-object pancake-mix *loc-putdown-pancake-mix*))
       (when flipping
@@ -150,6 +160,8 @@
 
 (defun demo-part-pouring (pancake-mix-orig pancake-maker-orig)
   (set-initial-joint-values-pouring)
+  ;; Leave time for opening the pancake mix bottle
+  (wait-for-external-trigger)
   (let ((pancake-mix (desig:copy-designator pancake-mix-orig))
         (pancake-maker (desig:copy-designator pancake-maker-orig)))
     (cram-pr2-fccl-demo::set-pose
@@ -163,7 +175,9 @@
      (reference (desig-prop-value
                  (desig:current-desig pancake-maker)
                  'desig-props:at)))
-    (pr2-fccl-demo::demo-part-pouring pancake-mix pancake-maker)))
+    (pr2-fccl-demo::demo-part-pouring pancake-mix pancake-maker)
+    ;; Leave time for closing the pancake mix bottle again
+    (wait-for-external-trigger)))
 
 (defun demo-part-flipping (spatula-left-orig spatula-right-orig pancake-orig pancake-maker-orig)
   (set-initial-joint-values-flipping)
