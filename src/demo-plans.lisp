@@ -214,7 +214,19 @@
                                                 (tf:make-3d-vector 0.02 0.0 0.0))))))
                      (milk-box (object `((type pancakemix)
                                          (at ,loc-on-island)
-                                         (side :right)))))
+                                         (side :right)
+                                         (max-handles 1)
+                                         ,@(mapcar
+                                            (lambda (handle-object)
+                                              `(handle ,handle-object))
+                                            (make-handles
+                                             0.04
+                                             :segments 2
+                                             :offset-angle (/ pi 2)
+                                             :ax (/ pi 2)
+                                             :center-offset
+                                             (tf:make-3d-vector 0.02 0.0 0.0)))))))
+    (set-grasp-stability-subject "PANCAKE-MIX")
     (let ((pancake-mix
             (cpl:with-failure-handling
                 ((cram-plan-library::object-not-found (f)
@@ -226,4 +238,17 @@
                 (unless perceived
                   (cpl:fail 'cram-plan-failures::object-not-found))
                 perceived))))
-      (pick-object pancake-mix :stationary t))))
+      (pick-object pancake-mix :stationary t))
+    (set-grasp-stability-subject "MILK-BOX")
+    (let ((milk-box
+            (cpl:with-failure-handling
+                ((cram-plan-library::object-not-found (f)
+                   (declare (ignore f))
+                   (cpl:retry)))
+              (let ((perceived (perceive-a milk-box
+                                           :stationary t
+                                           :move-head nil)))
+                (unless perceived
+                  (cpl:fail 'cram-plan-failures::object-not-found))
+                perceived))))
+      (pick-object milk-box :stationary t))))

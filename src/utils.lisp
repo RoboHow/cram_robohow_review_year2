@@ -39,6 +39,7 @@
 (defparameter *spatula-right* nil)
 (defparameter *pancake-mix* nil)
 (defparameter *pancake* nil)
+(defparameter *grasp-stability-subject* "PANCAKE-MIX")
 
 (defmacro perceive-a (object &key stationary (move-head t))
   `(cpl:with-failure-handling
@@ -456,6 +457,7 @@
     spatula))
 
 (defun prepare-settings ()
+  (set-grasp-stability-subject "PANCAKE-MIX")
   ;; NOTE(winkler): This validator breaks IK based `to reach' and `to
   ;; see' location resolution. Disabling it, since everything works
   ;; just nicely without it. Gotta look into this later.
@@ -518,7 +520,7 @@
         (t 25.0)))
 
 (defmethod pr2-manip-pm::on-execute-grasp-gripper-closed cram-beliefstate
-  (object-name gripper-effort gripper-close-pos side pregrasp-pose safe-pose)
+    (object-name gripper-effort gripper-close-pos side pregrasp-pose safe-pose)
   (when (eql object-name 'desig-props::pancakemix0)
     (cpl:with-failure-handling
         ((cpl:policy-check-condition-met (f)
@@ -531,9 +533,25 @@
              (moveit:add-collision-object object-name))
            (cpl:fail 'cram-plan-library::manipulation-pose-unreachable)))
       (cpl:with-policy cram-graspstability::grasp-stability-awareness
-          ("grasp" 0.5d0 "touch" "PANCAKE-MIX")
-        ;;(symbol-name object-name)
-        (cpl:sleep* 5)))))
+          ("grasp" 0.5d0 "touch" *grasp-stability-subject*)
+        (cpl:sleep* 3)))))
+
+(defmethod on-execute-grasp-gripper-positioned-for-grasp cram-beliefstate
+    (object-name gripper-effort gripper-close-pos side pregrasp-pose safe-pose)
+  (when (eql object-name 'desig-props::pancakemix0)
+    (wait-for-external-trigger)
+    (cpl:with-failure-handling
+        ((cpl:policy-check-condition-met (f)
+           (declare (ignore f))
+           (pr2-manip-pm::execute-move-arm-pose side pregrasp-pose)
+           (when safe-pose
+             (pr2-manip-pm::execute-move-arm-pose side safe-pose))
+           (when object-name
+             (moveit:add-collision-object object-name))
+           (cpl:fail 'cram-plan-library::manipulation-pose-unreachable)))
+      (cpl:with-policy cram-graspstability::grasp-stability-awareness
+          ("grasp" 0.5d0 "vision" *grasp-stability-subject*)
+        (cpl:sleep* 3)))))
 
 (defmethod pr2-manip-pm::on-put-down-reorientation-count cram-beliefstate
   (object-designator)
@@ -541,3 +559,20 @@
     (when (or (eql name 'desig-props::spatula0)
               (eql name 'desig-props::spatula1))
       2)))
+
+(defun wait-for-external-trigger ()
+  (roslisp:ros-info (demo-control) "Waiting for external trigger to continue.")
+  (let* ((waiter-fluent (cpl:make-fluent))
+         (subscriber (roslisp:subscribe
+                      "/waiter_fluent"
+                      "std_msgs/Empty"
+                      (lambda (msg)
+                        (declare (ignore msg))
+                        (cpl:setf (cpl:value waiter-fluent) t)))))
+    (loop until (cpl:value waiter-fluent) do (sleep 0.1))
+    (roslisp:unsubscribe subscriber))
+  (roslisp:ros-info (demo-control) "External trigger arrived."))
+
+(defgeneric set-grasp-stability-subject (object-name))
+(defmethod set-grasp-stability-subject ((object-name string))
+  (setf *grasp-stability-subject* object-name))
