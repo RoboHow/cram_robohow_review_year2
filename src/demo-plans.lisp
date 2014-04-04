@@ -253,6 +253,10 @@
                   (cpl:fail 'cram-plan-failures::object-not-found))
                 perceived))))
       (pick-object pancake-mix :stationary t))
+    (moveit:detach-collision-object-from-link 'pancakemix0 "r_wrist_roll_link")
+    (wait-for-external-trigger)
+    (pr2-manip-pm::open-gripper :right)
+    (wait-for-external-trigger)
     (set-grasp-stability-subject "MILK-BOX")
     (let ((milk-box
             (cpl:with-failure-handling
@@ -265,4 +269,8 @@
                 (unless perceived
                   (cpl:fail 'cram-plan-failures::object-not-found))
                 perceived))))
-      (pick-object milk-box :stationary t))))
+      (pick-object milk-box :stationary t))
+    (moveit:detach-collision-object-from-link 'pancakemix0 "r_wrist_roll_link")
+    (moveit:detach-collision-object-from-link 'pancakemix1 "r_wrist_roll_link")
+    (wait-for-external-trigger)
+    (pr2-manip-pm::open-gripper :right)))
