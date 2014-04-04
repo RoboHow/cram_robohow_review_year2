@@ -1,0 +1,4 @@
+<launch>
+  <include file="$(find cram_robohow_review_year2)/launch/environment_representation.launch" />
+  <node name="demo_control_ui" pkg="grasp_stability_estimator" type="demo_control.py" />
+</launch>
