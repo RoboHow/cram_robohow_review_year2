@@ -64,7 +64,7 @@
              (pick-and-place))
            (when pancake-manipulation
              (prepare-global-designators :pancake-manipulation-only t)
-             (pancake-manipulation :pouring nil))))))
+             (pancake-manipulation))))))
 
 (def-cram-function pick-and-place ()
   ;; Well-defined home-pose
@@ -199,9 +199,13 @@
       (cl-transforms:euler->quaternion :ax pi)))
     (cram-pr2-fccl-demo::set-pose
      pancake
-     (reference (desig-prop-value
-                 (desig:current-desig pancake-maker)
-                 'desig-props:at)))
+     (let* ((prepose (reference (desig-prop-value
+                                 (desig:current-desig pancake-maker)
+                                 'desig-props:at)))
+            (pose (tf:copy-pose-stamped
+                   prepose :origin (tf:v- (tf:origin prepose)
+                                          (tf:make-3d-vector 0.0 0.0 0.0)))))
+       pose))
     (cram-pr2-fccl-demo::set-pose
      pancake-maker
      (reference (desig-prop-value
@@ -256,21 +260,22 @@
     (moveit:detach-collision-object-from-link 'pancakemix0 "r_wrist_roll_link")
     (wait-for-external-trigger)
     (pr2-manip-pm::open-gripper :right)
-    (wait-for-external-trigger)
-    (set-grasp-stability-subject "MILK-BOX")
-    (let ((milk-box
-            (cpl:with-failure-handling
-                ((cram-plan-library::object-not-found (f)
-                   (declare (ignore f))
-                   (cpl:retry)))
-              (let ((perceived (perceive-a milk-box
-                                           :stationary t
-                                           :move-head nil)))
-                (unless perceived
-                  (cpl:fail 'cram-plan-failures::object-not-found))
-                perceived))))
-      (pick-object milk-box :stationary t))
-    (moveit:detach-collision-object-from-link 'pancakemix0 "r_wrist_roll_link")
-    (moveit:detach-collision-object-from-link 'pancakemix1 "r_wrist_roll_link")
-    (wait-for-external-trigger)
-    (pr2-manip-pm::open-gripper :right)))
+    ))
+    ;; (wait-for-external-trigger)
+    ;; (set-grasp-stability-subject "MILK-BOX")
+    ;; (let ((milk-box
+    ;;         (cpl:with-failure-handling
+    ;;             ((cram-plan-library::object-not-found (f)
+    ;;                (declare (ignore f))
+    ;;                (cpl:retry)))
+    ;;           (let ((perceived (perceive-a milk-box
+    ;;                                        :stationary t
+    ;;                                        :move-head nil)))
+    ;;             (unless perceived
+    ;;               (cpl:fail 'cram-plan-failures::object-not-found))
+    ;;             perceived))))
+    ;;   (pick-object milk-box :stationary t))
+    ;; (moveit:detach-collision-object-from-link 'pancakemix0 "r_wrist_roll_link")
+    ;; (moveit:detach-collision-object-from-link 'pancakemix1 "r_wrist_roll_link")
+    ;; (wait-for-external-trigger)
+    ;; (pr2-manip-pm::open-gripper :right)))
