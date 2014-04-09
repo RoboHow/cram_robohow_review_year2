@@ -63,7 +63,7 @@
                designator_integration_msgs-msg
                designator_integration_msgs-srv
                cram-beliefstate
-               spatial-relations-costmap
+               ;spatial-relations-costmap
                cram-graspstability)
   :components
   ((:module "src"
