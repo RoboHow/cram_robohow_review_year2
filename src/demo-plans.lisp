@@ -48,23 +48,28 @@
 ;;   > (demo :grasp-stability t)
 ;;   
 ;;   This part does not run in conjunction with other parts, as it is
-;;   a separate demo.
+;;   a separate demo (that uses the same components).
 ;;
 
 (def-top-level-cram-function demo (&key (pick-and-place t)
+                                        (pick-and-place-short t)
                                         (pancake-manipulation t)
-                                        (grasp-stability nil))
+                                        (grasp-stability nil)
+                                        (pouring t))
   (prepare-settings)
+  (wait-for-external-trigger :force t)
   (with-process-modules
     (cond (grasp-stability
            (demo-part-grasp-stability))
           (t
            (when pick-and-place
-             (prepare-global-designators)
-             (pick-and-place))
+             (prepare-global-designators :pick-and-place-short pick-and-place-short)
+             (cond (pick-and-place-short
+                    (pick-and-place-short))
+                   (t (pick-and-place))))
            (when pancake-manipulation
              (prepare-global-designators :pancake-manipulation-only t)
-             (pancake-manipulation))))))
+             (pancake-manipulation :pouring pouring))))))
 
 (def-cram-function pick-and-place ()
   ;; Well-defined home-pose
@@ -84,6 +89,19 @@
   (place-object *spatula-right* *loc-putdown-spatula-right*)
   (drive-to-pancake-mix-pickup-pose)
   (place-object *pancake-mix* *loc-putdown-pancake-mix*)
+  ;; Well-defined home-pose
+  (ensure-arms-up))
+
+(def-cram-function pick-and-place-short ()
+  ;; Well-defined home-pose
+  (ensure-arms-up)
+  (pick-object *spatula-right*)
+  ;; Approach the pancake table and check where the pancake maker is
+  (drive-to-pancake-pose-far)
+  (perceive-a *pancake-maker*)
+  ;; Place the spatula to the right of the pancake maker and the
+  ;; pancake mix on the kitchen island, near to the right spatula
+  (place-object *spatula-right* *loc-putdown-spatula-right*)
   ;; Well-defined home-pose
   (ensure-arms-up))
 
@@ -117,12 +135,24 @@
       (when pouring
         ;; Position in front of pancake table (close)
         (drive-to-pancake-pose-close)
-        ;; Do pancake pouring here
-        (demo-part-pouring (current-desig pancake-mix) (current-desig pancake-maker))
-        ;; Move the right arm back up
-        (ensure-arms-up :right)
-        ;; Put the pancake mix back
-        (place-object pancake-mix *loc-putdown-pancake-mix*))
+        ;; Reperceive the pancake maker
+        (let ((pancake-maker
+                (cpl:with-failure-handling
+                    ((cram-plan-library::object-not-found (f)
+                       (declare (ignore f))
+                       (cpl:retry)))
+                  (let ((perceived (perceive-a pancake-maker
+                                               :stationary t
+                                               :move-head t)))
+                    (unless perceived
+                      (cpl:fail 'cram-plan-failures::object-not-found))
+                    perceived))))
+          ;; Do pancake pouring here
+          (demo-part-pouring (current-desig pancake-mix) (current-desig pancake-maker))
+          ;; Move the right arm back up
+          (ensure-arms-up :right)
+          ;; Put the pancake mix back
+          (place-object pancake-mix *loc-putdown-pancake-mix*)))
       (when flipping
         ;; Position in front of pancake table (far)
         (drive-to-pancake-pose-far)
@@ -137,26 +167,30 @@
           (drive-to-spatula-right-see-pose)
           (equate *spatula-right* spatula-right)
           (pick-object spatula-right :stationary t)
-          (let ((pancake
-                  (cpl:with-failure-handling
-                      ((cram-plan-library::object-not-found (f)
-                         (declare (ignore f))
-                         (cpl:retry)))
-                    (let ((perceived (perceive-a *pancake*)))
-                      (unless perceived
-                        (cpl:fail 'cram-plan-failures::object-not-found))
-                      perceived))))
-            ;; Position in front of pancake table (close)
-            (drive-to-pancake-pose-close)
-            ;; Do the pancake flipping here
-            (demo-part-flipping spatula-left spatula-right pancake pancake-maker)
-            ;; Position in front of pancake table (far)
-            (drive-to-pancake-pose-far)
-            ;; Put the spatulas back
-            (place-object spatula-left *loc-putdown-spatula-left* :stationary t)
-            (place-object spatula-right *loc-putdown-spatula-right* :stationary t))
-          ;; Well-defined home-pose
-          (ensure-arms-up))))))
+          (with-designators ((pancake-pre
+                              (object `((type pancake)
+                                        (at ,(desig-prop-value pancake-maker 'at))))))
+            (let ((pancake
+                    (cpl:with-failure-handling
+                        ((cram-plan-library::object-not-found (f)
+                           (declare (ignore f))
+                           (cpl:retry)))
+                      (let ((perceived (perceive-a pancake-pre)))
+                        (unless perceived
+                          (cpl:fail 'cram-plan-failures::object-not-found))
+                        perceived))))
+              ;; Position in front of pancake table (close)
+              (drive-to-pancake-pose-close)
+              ;; Do the pancake flipping here
+              (demo-part-flipping spatula-left spatula-right pancake pancake-maker)
+              ;; Position in front of pancake table (far)
+              (drive-to-pancake-pose-far)
+              ;; Put the spatulas back
+              ;;(place-object spatula-left *loc-putdown-spatula-left* :stationary t)
+              ;;(place-object spatula-right *loc-putdown-spatula-right* :stationary t)
+            ))))
+      ;; Well-defined home-pose
+      (ensure-arms-up))))
 
 (defun demo-part-pouring (pancake-mix-orig pancake-maker-orig)
   (set-initial-joint-values-pouring)
@@ -200,7 +234,7 @@
     (cram-pr2-fccl-demo::set-pose
      pancake
      (let* ((prepose (reference (desig-prop-value
-                                 (desig:current-desig pancake-maker)
+                                 (desig:current-desig pancake)
                                  'desig-props:at)))
             (pose (tf:copy-pose-stamped
                    prepose :origin (tf:v- (tf:origin prepose)
@@ -214,6 +248,7 @@
     (pr2-fccl-demo::demo-part-flipping spatula-left spatula-right pancake pancake-maker)))
 
 (defun demo-part-grasp-stability ()
+  (setf *wait-for-trigger* t)
   (with-designators ((loc-on-island (location `((on Cupboard)
                                                 (name "kitchen_island"))))
                      (pancake-mix (object `((type pancakemix)
@@ -234,48 +269,50 @@
                                          (at ,loc-on-island)
                                          (side :right)
                                          (max-handles 1)
-                                         ,@(mapcar
-                                            (lambda (handle-object)
-                                              `(handle ,handle-object))
-                                            (make-handles
-                                             0.04
-                                             :segments 2
-                                             :offset-angle (/ pi 2)
-                                             :ax (/ pi 2)
-                                             :center-offset
-                                             (tf:make-3d-vector 0.02 0.0 0.0)))))))
-    (set-grasp-stability-subject "PANCAKE-MIX")
-    (let ((pancake-mix
-            (cpl:with-failure-handling
-                ((cram-plan-library::object-not-found (f)
-                   (declare (ignore f))
-                   (cpl:retry)))
-              (let ((perceived (perceive-a pancake-mix
-                                           :stationary t
-                                           :move-head nil)))
-                (unless perceived
-                  (cpl:fail 'cram-plan-failures::object-not-found))
-                perceived))))
-      (pick-object pancake-mix :stationary t))
-    (moveit:detach-collision-object-from-link 'pancakemix0 "r_wrist_roll_link")
-    (wait-for-external-trigger)
-    (pr2-manip-pm::open-gripper :right)
-    ))
-    ;; (wait-for-external-trigger)
-    ;; (set-grasp-stability-subject "MILK-BOX")
-    ;; (let ((milk-box
-    ;;         (cpl:with-failure-handling
-    ;;             ((cram-plan-library::object-not-found (f)
-    ;;                (declare (ignore f))
-    ;;                (cpl:retry)))
-    ;;           (let ((perceived (perceive-a milk-box
-    ;;                                        :stationary t
-    ;;                                        :move-head nil)))
-    ;;             (unless perceived
-    ;;               (cpl:fail 'cram-plan-failures::object-not-found))
-    ;;             perceived))))
-    ;;   (pick-object milk-box :stationary t))
-    ;; (moveit:detach-collision-object-from-link 'pancakemix0 "r_wrist_roll_link")
-    ;; (moveit:detach-collision-object-from-link 'pancakemix1 "r_wrist_roll_link")
-    ;; (wait-for-external-trigger)
-    ;; (pr2-manip-pm::open-gripper :right)))
+                                         (handle ,(make-designator
+                                                   'cram-designators:object
+                                                   `((desig-props:type desig-props:handle)
+                                                     (desig-props:at
+                                                      ,(a location `((desig-props:pose
+                                                                      ,(tf:make-pose
+                                                                        (tf:make-3d-vector
+                                                                         0.03 0 -0.05)
+                                                                        (tf:euler->quaternion
+                                                                         :ay (/ pi 2))))))))))))))
+    (let ((mode 2))
+      (when (eql mode 1)
+        (set-grasp-stability-subject "PANCAKE-MIX")
+        (let ((pancake-mix
+                (cpl:with-failure-handling
+                    ((cram-plan-library::object-not-found (f)
+                       (declare (ignore f))
+                       (cpl:retry)))
+                  (let ((perceived (perceive-a pancake-mix
+                                               :stationary t
+                                               :move-head nil)))
+                    (unless perceived
+                      (cpl:fail 'cram-plan-failures::object-not-found))
+                    perceived))))
+          (pick-object pancake-mix :stationary t))
+        (moveit:detach-collision-object-from-link 'pancakemix0 "r_wrist_roll_link")
+        (wait-for-external-trigger)
+        (pr2-manip-pm::open-gripper :right))
+      (when (eql mode 2)
+        (wait-for-external-trigger)
+        (set-grasp-stability-subject "MILK-BOX")
+        (let ((milk-box
+                (cpl:with-failure-handling
+                    ((cram-plan-library::object-not-found (f)
+                       (declare (ignore f))
+                       (cpl:retry)))
+                  (let ((perceived (perceive-a milk-box
+                                               :stationary t
+                                               :move-head nil)))
+                    (unless perceived
+                      (cpl:fail 'cram-plan-failures::object-not-found))
+                    perceived))))
+          (pick-object milk-box :stationary t))
+        (moveit:detach-collision-object-from-link 'pancakemix0 "r_wrist_roll_link")
+        (moveit:detach-collision-object-from-link 'pancakemix1 "r_wrist_roll_link")
+        (wait-for-external-trigger)
+        (pr2-manip-pm::open-gripper :right)))))

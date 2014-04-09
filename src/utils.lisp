@@ -40,6 +40,7 @@
 (defparameter *pancake-mix* nil)
 (defparameter *pancake* nil)
 (defparameter *grasp-stability-subject* "PANCAKE-MIX")
+(defparameter *wait-for-trigger* nil)
 
 (defmacro perceive-a (object &key stationary (move-head t))
   `(cpl:with-failure-handling
@@ -54,7 +55,11 @@
               (first (perceive-object
                       'cram-plan-library:currently-visible
                       ,object))))
-           (t (perceive-object 'cram-plan-library:a ,object)))))
+           (t (cpl:with-failure-handling
+                  ((cram-plan-failures:location-not-reached-failure (f)
+                     (declare (ignore f))
+                     (cpl:retry)))
+                (perceive-object 'cram-plan-library:a ,object))))))
 
 (defmacro pick-object (object &key stationary)
   `(cpl:with-failure-handling
@@ -94,7 +99,7 @@
                `(achieve `(cram-plan-library::object-placed-at ,,object ,,location))))
        (ensure-arms-up side))))
 
-(defun prepare-global-designators (&key pancake-manipulation-only)
+(defun prepare-global-designators (&key pancake-manipulation-only pick-and-place-short)
   (setf *loc-on-sink-counter*
         (make-designator
          'location
@@ -145,17 +150,16 @@
   (setf *pancake-mix*
         (make-designator
          'object
-         `((at ,(cond (pancake-manipulation-only *loc-putdown-pancake-mix*)
+         `((at ,(cond ((or pancake-manipulation-only pick-and-place-short) *loc-putdown-pancake-mix*)
                       (t *loc-on-sink-counter*)))
            (type pancakemix)
            (max-handles 1)
-           (side :right)
            ,@(mapcar
               (lambda (handle-object)
                 `(handle ,handle-object))
               (make-handles
                0.04
-               :segments 8
+               :segments 2
                :offset-angle (/ pi 2)
                :ax (/ pi 2)
                :center-offset
@@ -163,10 +167,9 @@
   (setf *spatula-left*
         (make-designator
          'object
-         `((at ,(cond (pancake-manipulation-only *loc-putdown-spatula-left*)
+         `((at ,(cond ((or pancake-manipulation-only pick-and-place-short) *loc-putdown-spatula-left*)
                       (t *loc-on-kitchen-island*)))
            (type spatula)
-           (side :left)
            (desig-props:grasp-type desig-props:top-slide-down)
            (max-handles 1)
            ,@(mapcar
@@ -192,6 +195,7 @@
          `((at ,(cond (pancake-manipulation-only *loc-putdown-spatula-right*)
                       (t *loc-on-sink-counter*)))
            (type spatula)
+           (side :right)
            (desig-props:grasp-type desig-props:top-slide-down)
            (max-handles 1)
            ,@(mapcar
@@ -215,13 +219,13 @@
 (defun drive-to-spatula-right-see-pose ()
   (drive-to-pose (tf:make-pose-stamped
                   "/map" (roslisp:ros-time)
-                  (tf:make-3d-vector -0.08761 -0.37177628 0.0)
+                  (tf:make-3d-vector -0.10 -0.37177628 0.0)
                   (tf:euler->quaternion :az (- pi (/ pi 8))))))
 
 (defun drive-to-spatula-left-see-pose ()
   (drive-to-pose (tf:make-pose-stamped
                   "/map" (roslisp:ros-time)
-                  (tf:make-3d-vector -0.08761 -0.37177628 0.0)
+                  (tf:make-3d-vector -0.10 -0.37177628 0.0)
                   (tf:euler->quaternion :az (+ pi (/ pi 8))))))
 
 (defun drive-to-pancake-mix-pickup-pose ()
@@ -233,7 +237,7 @@
 (defun drive-to-pancake-pose-far ()
   (drive-to-pose (tf:make-pose-stamped
                   "/map" (roslisp:ros-time)
-                  (tf:make-3d-vector -0.08761 -0.37177628 0.0)
+                  (tf:make-3d-vector -0.10 -0.37177628 0.0)
                   (tf:make-quaternion 0 0 1 -0.01167))))
 
 (defun drive-to-pancake-pose-close ()
@@ -409,7 +413,7 @@
                                 (declare (ignore f))
                                 (return-from nav)))
         (cpl:pursue
-          (sleep 10)
+          (sleep 25)
           (perform act))))))
 
 (def-top-level-cram-function see-object (description)
@@ -459,16 +463,17 @@
     spatula))
 
 (defun prepare-settings ()
+  (setf *wait-for-trigger* nil)
   (set-grasp-stability-subject "PANCAKE-MIX")
   ;; NOTE(winkler): This validator breaks IK based `to reach' and `to
   ;; see' location resolution. Disabling it, since everything works
   ;; just nicely without it. Gotta look into this later.
   (cram-designators:disable-location-validation-function
    'bullet-reasoning-designators::check-ik-solution)
-  (cram-designators:disable-location-validation-function
-   'spatial-relations-costmap::potential-field-costmap-pose-function)
-  (cram-designators:disable-location-validation-function
-   'spatial-relations-costmap::collision-pose-validator)
+  ;(cram-designators:disable-location-validation-function
+  ; 'spatial-relations-costmap::potential-field-costmap-pose-function)
+  ;(cram-designators:disable-location-validation-function
+  ; 'spatial-relations-costmap::collision-pose-validator)
   (cram-designators:disable-location-validation-function
    'bullet-reasoning-designators::validate-designator-solution)
   (cram-uima::config-uima)
@@ -523,25 +528,28 @@
 
 (defmethod pr2-manip-pm::on-execute-grasp-gripper-closed cram-beliefstate
     (object-name gripper-effort gripper-close-pos side pregrasp-pose safe-pose)
-  (when (eql object-name 'desig-props::pancakemix0)
-    (cpl:with-failure-handling
-        ((cpl:policy-check-condition-met (f)
-           (declare (ignore f))
-           (pr2-manip-pm::open-gripper side)
-           (pr2-manip-pm::execute-move-arm-pose side pregrasp-pose)
-           (when safe-pose
-             (pr2-manip-pm::execute-move-arm-pose side safe-pose))
-           (when object-name
-             (moveit:add-collision-object object-name))
-           (cpl:fail 'cram-plan-library::manipulation-pose-unreachable)))
-      (cpl:with-policy cram-graspstability::grasp-stability-awareness
-          ("grasp" 0.5d0 "touch" *grasp-stability-subject*)
-        (cpl:sleep* 5)))))
+  (let ((mode (cond ((string= *grasp-stability-subject* "MILK-BOX")
+                     "both")
+                    (t "touch"))))
+    (when (eql object-name 'desig-props::pancakemix0)
+      (cpl:with-failure-handling
+          ((cpl:policy-check-condition-met (f)
+             (declare (ignore f))
+             (pr2-manip-pm::open-gripper side)
+             (pr2-manip-pm::execute-move-arm-pose side pregrasp-pose)
+             (when safe-pose
+               (pr2-manip-pm::execute-move-arm-pose side safe-pose))
+             (when object-name
+               (moveit:add-collision-object object-name))
+             (cpl:fail 'cram-plan-library::manipulation-pose-unreachable)))
+        (cpl:with-policy cram-graspstability::grasp-stability-awareness
+            ("grasp" 0.5d0 mode *grasp-stability-subject*)
+          (cpl:sleep* 5))))))
 
 (defmethod pr2-manip-pm::on-execute-grasp-gripper-positioned-for-grasp cram-beliefstate
     (object-name gripper-effort gripper-close-pos side pregrasp-pose safe-pose)
   (wait-for-external-trigger)
-  (when (and nil (eql object-name 'desig-props::pancakemix0))
+  (when (string= *grasp-stability-subject* "MILK-BOX")
     (cpl:with-failure-handling
         ((cpl:policy-check-condition-met (f)
            (declare (ignore f))
@@ -555,6 +563,10 @@
           ("grasp" 0.5d0 "vision" *grasp-stability-subject*)
         (cpl:sleep* 5)))))
 
+(defmethod pr2-manip-pm::on-execute-grasp-pregrasp-reached cram-beliefstate
+    (object-name gripper-effort gripper-close-pos side pregrasp-pose safe-pose)
+  (wait-for-external-trigger))
+
 (defmethod pr2-manip-pm::on-put-down-reorientation-count cram-beliefstate
   (object-designator)
   (let ((name (desig-prop-value object-designator 'desig-props:name)))
@@ -562,18 +574,19 @@
               (eql name 'desig-props::spatula1))
       2)))
 
-(defun wait-for-external-trigger ()
-  (roslisp:ros-info (demo-control) "Waiting for external trigger to continue.")
-  (let* ((waiter-fluent (cpl:make-fluent))
-         (subscriber (roslisp:subscribe
-                      "/waiter_fluent"
-                      "std_msgs/Empty"
-                      (lambda (msg)
-                        (declare (ignore msg))
-                        (cpl:setf (cpl:value waiter-fluent) t)))))
-    (loop until (cpl:value waiter-fluent) do (sleep 0.1))
-    (roslisp:unsubscribe subscriber))
-  (roslisp:ros-info (demo-control) "External trigger arrived."))
+(defun wait-for-external-trigger (&key force)
+  (when (or *wait-for-trigger* force)
+    (roslisp:ros-info (demo-control) "Waiting for external trigger to continue.")
+    (let* ((waiter-fluent (cpl:make-fluent))
+           (subscriber (roslisp:subscribe
+                        "/waiter_fluent"
+                        "std_msgs/Empty"
+                        (lambda (msg)
+                          (declare (ignore msg))
+                          (cpl:setf (cpl:value waiter-fluent) t)))))
+      (loop until (cpl:value waiter-fluent) do (sleep 0.1))
+      (roslisp:unsubscribe subscriber))
+    (roslisp:ros-info (demo-control) "External trigger arrived.")))
 
 (defgeneric set-grasp-stability-subject (object-name))
 (defmethod set-grasp-stability-subject ((object-name string))

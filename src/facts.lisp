@@ -105,5 +105,5 @@
     (desig-prop ?desig (desig-props:name "pancake_table"))
     (costmap ?cm)
     (costmap-add-function restrict-cm-sp-rel-mgc
-                          (restrict-cm-sp-rel-mgc -1.0 0.0 0.2)
+                          (restrict-cm-sp-rel-mgc -1.0 0.1 0.2)
                           ?cm)))
