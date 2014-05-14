@@ -35,7 +35,6 @@
   <build_depend>bullet_reasoning_designators</build_depend>
   <build_depend>cram_physics_utils</build_depend>
   <build_depend>semantic_map_costmap</build_depend>
-  <build_depend>nav_pcontroller</build_depend>
   <build_depend>pr2_description_lowres</build_depend>
   <build_depend>robosherlock_process_module</build_depend>
   <build_depend>cram_beliefstate</build_depend>
@@ -67,7 +66,6 @@
   <run_depend>bullet_reasoning_designators</run_depend>
   <run_depend>cram_physics_utils</run_depend>
   <run_depend>semantic_map_costmap</run_depend>
-  <run_depend>nav_pcontroller</run_depend>
   <run_depend>pr2_description_lowres</run_depend>
   <run_depend>robosherlock_process_module</run_depend>
   <run_depend>cram_beliefstate</run_depend>
